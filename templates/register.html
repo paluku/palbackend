@@ -3,55 +3,49 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>Inscription — CVPro</title>
+<title>Inscription — Caisse</title>
 <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}"/>
 </head>
 <body>
 
 <header class="topbar">
   <div class="wrap">
-    <a href="/" class="logo">CV<span>Pro</span></a>
+    <a href="/" class="logo">💰 Caisse</a>
     <nav class="menu">
-      <a href="/">Accueil</a>
       <a href="/login">Connexion</a>
     </nav>
   </div>
 </header>
 
-<main class="contenu" style="padding: 60px 0;">
-  <div class="form-auth">
-    <h1>Créer un compte</h1>
-    <p class="sous-titre">Gratuit, en 30 secondes</p>
-
+<main class="contenu">
+  <div class="wrap">
     {% with messages = get_flashed_messages(with_categories=true) %}
       {% for cat, msg in messages %}
         <div class="flash flash-{{ cat }}">{{ msg }}</div>
       {% endfor %}
     {% endwith %}
 
-    <form method="post" class="formulaire">
-      <label>Nom complet *
-        <input type="text" name="nom" value="{{ nom or '' }}" required/>
-      </label>
-      <label>Email *
-        <input type="email" name="email" value="{{ email or '' }}" required/>
-      </label>
-      <label>Téléphone
-        <input type="tel" name="telephone" value="{{ telephone or '' }}"/>
-      </label>
-      <label>Mot de passe * (6 caractères min.)
-        <input type="password" name="password" minlength="6" required/>
-      </label>
-      <label>Confirmer le mot de passe *
-        <input type="password" name="password2" minlength="6" required/>
-      </label>
+    <div class="form-auth">
+      <h1>Créer un compte</h1>
+      <p class="sous-titre">Gratuit, en 30 secondes</p>
 
-      <button type="submit" class="btn-or btn-grand">Créer mon compte</button>
-    </form>
+      <form method="post" class="formulaire">
+        <label>Nom complet *
+          <input type="text" name="nom" value="{{ nom or '' }}" required/>
+        </label>
+        <label>Email *
+          <input type="email" name="email" value="{{ email or '' }}" required/>
+        </label>
+        <label>Mot de passe * (6 caractères min.)
+          <input type="password" name="password" minlength="6" required/>
+        </label>
+        <button type="submit" class="btn-or btn-grand">Créer mon compte</button>
+      </form>
 
-    <p class="lien-bas">
-      Déjà un compte ? <a href="/login">Connectez-vous</a>
-    </p>
+      <p class="lien-bas">
+        Déjà un compte ? <a href="/login">Connectez-vous</a>
+      </p>
+    </div>
   </div>
 </main>
 
