@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Accueil — Caisse</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}"/>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="wrap">
+    <a href="/" class="logo">💰 Caisse</a>
+    <nav class="menu">
+      {% if current_user.is_authenticated %}
+        <span class="badge">👤 {{ current_user.nom }}</span>
+        {% if current_user.is_admin %}
+          <a href="/admin" class="btn-or">🎛️ Admin</a>
+        {% endif %}
+        <a href="/users">👥 Utilisateurs</a>
+        <a href="/logout" class="btn-logout">Déconnexion</a>
+      {% else %}
+        <a href="/login">Connexion</a>
+        <a href="/register" class="btn-or">Inscription</a>
+      {% endif %}
+    </nav>
+  </div>
+</header>
+
+<main class="contenu">
+  <div class="wrap">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% for cat, msg in messages %}
+        <div class="flash flash-{{ cat }}">{{ msg }}</div>
+      {% endfor %}
+    {% endwith %}
+
+    <div class="hero">
+      <h1>💰 Caisse & Marchandises</h1>
+      <p>Application de gestion — Recettes journalières, marchandises et statistiques</p>
+
+      <div class="hero-actions">
+        {% if current_user.is_authenticated %}
+          {% if current_user.is_admin %}
+            <a href="/admin" class="btn-or">🎛️ Ouvrir le panneau Admin</a>
+          {% endif %}
+          <a href="/users" class="btn-ghost">👥 Voir les utilisateurs</a>
+        {% else %}
+          <a href="/login" class="btn-or">Se connecter</a>
+          <a href="/register" class="btn-ghost">Créer un compte</a>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="cards">
+      <div class="card">
+        <h3>📱 API Flutter</h3>
+        <p>Toutes les fonctionnalités disponibles sur mobile</p>
+      </div>
+      <div class="card">
+        <h3>💰 Recettes journalières</h3>
+        <p>Enregistrez vos recettes par jour et devise</p>
+      </div>
+      <div class="card">
+        <h3>📦 Marchandises</h3>
+        <p>Gestion avec calcul automatique des réductions</p>
+      </div>
+    </div>
+  </div>
+</main>
+
+<footer class="pied">
+  <div class="wrap">
+    <p>© {{ annee }} — Caisse & Marchandises</p>
+  </div>
+</footer>
+
+</body>
+</html>

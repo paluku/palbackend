@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Admin — Caisse & Marchandises</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}"/>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="wrap">
+    <a href="/" class="logo">🎛️ Admin Panel</a>
+    <div class="user-info">
+      <span class="badge-admin">👑 {{ current_user.nom }}</span>
+      <a href="/logout" class="btn-logout">Déconnexion</a>
+    </div>
+  </div>
+</header>
+
+<div class="tabs">
+  <div class="wrap">
+    <button class="tab actif" data-tab="dashboard">📊 Dashboard</button>
+    <button class="tab" data-tab="recettes">💰 Recettes</button>
+    <button class="tab" data-tab="marchandises">📦 Marchandises</button>
+    <button class="tab" data-tab="utilisateurs">👥 Utilisateurs</button>
+  </div>
+</div>
+
+<main class="contenu">
+  <div class="wrap">
+
+    <!-- ============ DASHBOARD ============ -->
+    <section id="tab-dashboard" class="tab-panel actif">
+      <h1>📊 Tableau de bord</h1>
+
+      <div class="stats-grid">
+        <div class="stat-card">
+          <span class="ico">💰</span>
+          <div class="val" id="stat-caisse-cdf">—</div>
+          <div class="lbl">Caisse CDF</div>
+        </div>
+        <div class="stat-card">
+          <span class="ico">📦</span>
+          <div class="val" id="stat-marchandises">—</div>
+          <div class="lbl">Total marchandises</div>
+        </div>
+        <div class="stat-card">
+          <span class="ico">📝</span>
+          <div class="val" id="stat-recettes">—</div>
+          <div class="lbl">Recettes</div>
+        </div>
+        <div class="stat-card">
+          <span class="ico">👥</span>
+          <div class="val" id="stat-users">—</div>
+          <div class="lbl">Utilisateurs</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>📈 Recettes des 7 derniers jours</h2>
+        <canvas id="graph-caisse" height="80"></canvas>
+      </div>
+
+      <div class="card">
+        <h2>🏆 Top marchandises</h2>
+        <div id="top-marchandises">Chargement...</div>
+      </div>
+    </section>
+
+    <!-- ============ RECETTES ============ -->
+    <section id="tab-recettes" class="tab-panel">
+      <div class="section-head">
+        <h1>💰 Recettes</h1>
+        <button class="btn-primary" onclick="ouvrirAjoutRecette()">+ Nouvelle recette</button>
+      </div>
+
+      <div class="card" style="padding:0;overflow:hidden;">
+        <table id="table-recettes">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Nom</th>
+              <th>Jour</th>
+              <th>Date</th>
+              <th>Heure</th>
+              <th>Montant</th>
+              <th>Devise</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="tbody-recettes"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ============ MARCHANDISES ============ -->
+    <section id="tab-marchandises" class="tab-panel">
+      <div class="section-head">
+        <h1>📦 Marchandises</h1>
+        <button class="btn-primary" onclick="ouvrirAjoutMarchandise()">+ Nouvelle marchandise</button>
+      </div>
+
+      <div class="card" style="padding:0;overflow:hidden;">
+        <table id="table-marchandises">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Nom</th>
+              <th>Prix unitaire</th>
+              <th>Qté</th>
+              <th>Réduction</th>
+              <th>Total net</th>
+              <th>Devise</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="tbody-marchandises"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ============ UTILISATEURS ============ -->
+    <section id="tab-utilisateurs" class="tab-panel">
+      <div class="section-head">
+        <h1>👥 Utilisateurs</h1>
+      </div>
+
+      <div class="card" style="padding:0;overflow:hidden;">
+        <table id="table-users">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Nom</th>
+              <th>Email</th>
+              <th>Rôle</th>
+              <th>Vérifié</th>
+              <th>Inscrit</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="tbody-users"></tbody>
+        </table>
+      </div>
+    </section>
+
+  </div>
+</main>
+
+<!-- ============ MODALE RECETTE ============ -->
+<div class="modale" id="modale-recette">
+  <div class="modale-boite">
+    <button class="modale-x" onclick="fermerModale('modale-recette')">×</button>
+    <h2 id="titre-modale-recette">Nouvelle recette</h2>
+
+    <form id="form-recette" onsubmit="sauvegarderRecette(event)">
+      <input type="hidden" id="recette-id"/>
+
+      <label>Nom / Client *
+        <input type="text" id="recette-nom" required/>
+      </label>
+
+      <div class="row">
+        <label>Jour *
+          <select id="recette-jour" required>
+            <option>Lundi</option>
+            <option>Mardi</option>
+            <option>Mercredi</option>
+            <option>Jeudi</option>
+            <option>Vendredi</option>
+            <option>Samedi</option>
+            <option>Dimanche</option>
+          </select>
+        </label>
+
+        <label>Date *
+          <input type="date" id="recette-date" required/>
+        </label>
+      </div>
+
+      <div class="row">
+        <label>Heure *
+          <input type="time" id="recette-heure" required/>
+        </label>
+
+        <label>Montant *
+          <input type="number" id="recette-montant" step="0.01" min="0.01" required/>
+        </label>
+      </div>
+
+      <label>Devise *
+        <select id="recette-devise" required>
+          <option value="CDF">CDF — Franc congolais</option>
+          <option value="EUR">EUR — Euro</option>
+          <option value="USD">USD — Dollar</option>
+        </select>
+      </label>
+
+      <label>Description
+        <textarea id="recette-description" rows="2"></textarea>
+      </label>
+
+      <div class="modale-actions">
+        <button type="button" class="btn-ghost" onclick="fermerModale('modale-recette')">Annuler</button>
+        <button type="submit" class="btn-primary">💾 Enregistrer</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ============ MODALE MARCHANDISE ============ -->
+<div class="modale" id="modale-marchandise">
+  <div class="modale-boite">
+    <button class="modale-x" onclick="fermerModale('modale-marchandise')">×</button>
+    <h2 id="titre-modale-marchandise">Nouvelle marchandise</h2>
+
+    <form id="form-marchandise" onsubmit="sauvegarderMarchandise(event)">
+      <input type="hidden" id="marchandise-id"/>
+
+      <label>Nom *
+        <input type="text" id="marchandise-nom" required/>
+      </label>
+
+      <label>Description
+        <textarea id="marchandise-description" rows="2"></textarea>
+      </label>
+
+      <div class="row">
+        <label>Prix unitaire *
+          <input type="number" id="marchandise-prix" step="0.01" min="0.01" required oninput="calculerTotal()"/>
+        </label>
+
+        <label>Quantité *
+          <input type="number" id="marchandise-quantite" step="0.01" min="0.01" value="1" required oninput="calculerTotal()"/>
+        </label>
+      </div>
+
+      <div class="row">
+        <label>Réduction (%)
+          <input type="number" id="marchandise-reduction" step="0.1" min="0" max="100" value="0" oninput="calculerTotal()"/>
+        </label>
+
+        <label>Devise *
+          <select id="marchandise-devise" required>
+            <option value="CDF">CDF</option>
+            <option value="EUR">EUR</option>
+            <option value="USD">USD</option>
+          </select>
+        </label>
+      </div>
+
+      <div class="recap">
+        <div class="recap-ligne"><span>Prix brut</span><b id="recap-brut">0</b></div>
+        <div class="recap-ligne"><span>Réduction</span><b id="recap-reduction">-0</b></div>
+        <div class="recap-ligne total"><span>Total net</span><b id="recap-net">0</b></div>
+      </div>
+
+      <div class="modale-actions">
+        <button type="button" class="btn-ghost" onclick="fermerModale('modale-marchandise')">Annuler</button>
+        <button type="submit" class="btn-primary">💾 Enregistrer</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ============ TOAST ============ -->
+<div class="toast" id="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="{{ url_for('static', filename='js/admin.js') }}"></script>
+</body>
+</html>

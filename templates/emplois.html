@@ -1,0 +1,687 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Offres d'emploi — CVPro</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}"/>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
+<style>
+  .offres-container { max-width: 1100px; margin: 0 auto; padding: 30px 20px; }
+  .offres-header { margin-bottom: 30px; }
+  .offres-header h1 { color: #2c3e50; margin-bottom: 8px; font-size: 1.8rem; }
+  .offres-header p { color: #64748b; font-size: .95rem; }
+
+  .filtres {
+    display: flex; gap: 12px; flex-wrap: wrap;
+    margin-bottom: 24px; padding: 18px;
+    background: #fff; border-radius: 14px;
+    border: 1px solid #e8ecf0;
+  }
+  .filtres input, .filtres select {
+    padding: 12px 16px; border: 1px solid #e8ecf0; border-radius: 10px;
+    font-family: inherit; font-size: .95rem; background: #fff;
+  }
+  .filtres input:focus, .filtres select:focus {
+    outline: none; border-color: #f39c12;
+    box-shadow: 0 0 0 3px rgba(243,156,18,.15);
+  }
+  .filtres input { flex: 1; min-width: 200px; }
+  .filtres button {
+    padding: 12px 26px; background: #f39c12; color: #fff; border: none;
+    border-radius: 10px; font-weight: 700; cursor: pointer;
+    font-family: inherit; font-size: .95rem;
+  }
+  .filtres button:hover { background: #e67e22; }
+  .filtres button:disabled { opacity: .6; cursor: wait; }
+
+  .offres-liste { display: flex; flex-direction: column; gap: 16px; }
+  .offre-card {
+    background: #fff; border: 1px solid #e8ecf0; border-radius: 14px;
+    padding: 22px; transition: all .2s;
+  }
+  .offre-card:hover {
+    border-color: #f39c12;
+    box-shadow: 0 8px 25px rgba(0,0,0,.06);
+  }
+  .offre-header {
+    display: flex; justify-content: space-between;
+    align-items: flex-start; gap: 16px; margin-bottom: 12px;
+  }
+  .offre-titre {
+    font-size: 1.15rem; font-weight: 700;
+    color: #2c3e50; margin-bottom: 4px;
+  }
+  .offre-entreprise { color: #64748b; font-size: .9rem; }
+  .offre-contrat {
+    background: #fef3c7; color: #92400e;
+    padding: 4px 12px; border-radius: 20px;
+    font-size: .75rem; font-weight: 700;
+    white-space: nowrap; flex-shrink: 0;
+  }
+  .offre-infos {
+    display: flex; flex-wrap: wrap; gap: 16px;
+    margin: 12px 0; font-size: .85rem; color: #64748b;
+  }
+  .offre-desc {
+    color: #475569; font-size: .9rem; line-height: 1.6;
+    margin-bottom: 14px;
+    display: -webkit-box; -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical; overflow: hidden;
+  }
+  .offre-tags {
+    display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 16px;
+  }
+  .offre-tag {
+    background: #f4f6f9; color: #34495e;
+    padding: 3px 10px; border-radius: 12px; font-size: .75rem;
+  }
+  .offre-actions {
+    display: flex; gap: 10px; flex-wrap: wrap;
+    padding-top: 14px; border-top: 1px solid #f1f5f9;
+  }
+  .btn-postuler {
+    background: linear-gradient(135deg, #7c3aed, #f39c12);
+    color: #fff; padding: 10px 22px;
+    border-radius: 10px; border: none;
+    font-weight: 700; font-size: .9rem;
+    cursor: pointer; font-family: inherit;
+    display: inline-flex; align-items: center; gap: 6px;
+    transition: all .2s;
+  }
+  .btn-postuler:hover { transform: translateY(-2px); }
+  .btn-ghost-dark {
+    background: transparent; color: #64748b;
+    border: 2px solid #cbd5e1; border-radius: 10px;
+    font-weight: 600; padding: 10px 20px;
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: .9rem; font-family: inherit; cursor: pointer;
+    transition: all .2s;
+  }
+  .btn-ghost-dark:hover { border-color: #f39c12; color: #f39c12; }
+
+  .vide {
+    text-align: center; padding: 60px 20px;
+    color: #94a3b8; background: #fff;
+    border-radius: 14px; border: 2px dashed #e8ecf0;
+  }
+  .vide-ico { font-size: 3rem; margin-bottom: 12px; opacity: .5; }
+  .chargement {
+    text-align: center; padding: 60px; color: #94a3b8;
+    background: #fff; border-radius: 14px;
+    border: 1px solid #e8ecf0;
+  }
+  .spinner {
+    width: 40px; height: 40px;
+    border: 4px solid #e8ecf0; border-top-color: #f39c12;
+    border-radius: 50%; margin: 0 auto 16px;
+    animation: spin .8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Modales */
+  .modale-boite { text-align: left; }
+  .modale-boite h3 { text-align: center; }
+
+  .modale-sauvegarde { max-width: 560px; }
+  .modale-sauvegarde input {
+    width: 100%; padding: 14px; border: 1px solid #cbd5e1;
+    border-radius: 10px; font-family: inherit; font-size: 1rem;
+    margin-bottom: 20px;
+  }
+  .modale-sauvegarde label {
+    display: block; font-size: .85rem; font-weight: 600;
+    color: #34495e; margin-bottom: 6px;
+  }
+  .modale-sauvegarde select, .modale-sauvegarde textarea {
+    width: 100%; padding: 12px; border: 1px solid #d5dbdb;
+    border-radius: 10px; font-family: inherit; font-size: .95rem;
+    margin-bottom: 16px; resize: vertical;
+  }
+  .modale-sauvegarde textarea { min-height: 100px; }
+  .modale-actions {
+    display: flex; gap: 10px; justify-content: flex-end;
+  }
+  .btn-annuler {
+    background: transparent; color: #64748b;
+    border: 2px solid #e2e8f0; padding: 12px 22px;
+    border-radius: 10px; font-family: inherit;
+    font-weight: 600; cursor: pointer; font-size: .9rem;
+  }
+  .btn-annuler:hover { border-color: #94a3b8; }
+
+  /* Modale détail */
+  .modale-detail { max-width: 700px; }
+  .modale-detail .modale-x {
+    position: absolute; top: 12px; right: 18px;
+    background: none; border: none; font-size: 2rem;
+    cursor: pointer; color: #94a3b8; z-index: 10;
+  }
+  .detail-titre {
+    font-size: 1.4rem; font-weight: 800; color: #2c3e50;
+    line-height: 1.3; margin-bottom: 8px; padding-right: 40px;
+  }
+  .detail-entreprise { color: #64748b; font-size: 1rem; margin-bottom: 16px; }
+  .detail-badges {
+    display: flex; flex-wrap: wrap; gap: 6px;
+    margin-bottom: 20px; padding-bottom: 16px;
+    border-bottom: 1px solid #e8ecf0;
+  }
+  .badge-detail {
+    padding: 5px 12px; border-radius: 20px;
+    font-size: .75rem; font-weight: 700;
+  }
+  .badge-contrat { background: #fef3c7; color: #92400e; }
+  .badge-lieu { background: #ecfdf5; color: #166534; }
+  .badge-salaire { background: #dbeafe; color: #1e40af; }
+  .badge-date { background: #f3e8ff; color: #7c3aed; }
+  .badge-categorie { background: #fce7f3; color: #9d174d; }
+  .detail-section { margin-bottom: 20px; }
+  .detail-section h4 {
+    color: #2c3e50; font-size: .85rem; font-weight: 700;
+    margin-bottom: 10px; text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+  .detail-description {
+    color: #475569; font-size: .9rem; line-height: 1.7;
+    background: #f9fbfc; padding: 16px;
+    border-radius: 10px; border-left: 3px solid #f39c12;
+    white-space: pre-wrap; max-height: 400px; overflow-y: auto;
+  }
+  .detail-tags { display: flex; flex-wrap: wrap; gap: 6px; }
+  .detail-tags span {
+    background: #f4f6f9; color: #34495e;
+    padding: 5px 12px; border-radius: 16px; font-size: .8rem;
+  }
+  .detail-actions-modale {
+    display: flex; gap: 10px; margin-top: 24px;
+    padding-top: 20px; border-top: 1px solid #e8ecf0;
+    flex-wrap: wrap;
+  }
+  .detail-actions-modale .btn-postuler { flex: 1; justify-content: center; }
+
+  @media (max-width: 700px) {
+    .offres-header h1 { font-size: 1.4rem; }
+    .filtres input, .filtres select, .filtres button { width: 100%; }
+    .offre-actions { flex-direction: column; }
+    .btn-postuler, .btn-ghost-dark { width: 100%; justify-content: center; }
+    .modale-detail { max-width: 100%; }
+  }
+</style>
+</head>
+<body data-connecte="true">
+
+<header class="topbar">
+  <div class="wrap">
+    <a href="/" class="logo">CV<span>Pro</span></a>
+    <nav class="menu">
+      <a href="/">Accueil</a>
+      <a href="/emplois" class="actif">💼 Emplois</a>
+      <a href="/alertes">🔔 Alertes</a>
+      <a href="/mes-cv">📂 Mes CV</a>
+      <a href="/mon-compte">👤 Mon compte</a>
+      <a href="/logout" class="btn-mini">Déconnexion</a>
+    </nav>
+  </div>
+</header>
+
+<main class="offres-container">
+  <div class="offres-header">
+    <h1>💼 Offres d'emploi</h1>
+    <p>Trouvez des offres qui correspondent à votre CV</p>
+  </div>
+
+  <div class="filtres">
+    <select id="select-source" style="max-width: 200px;">
+      <option value="france-travail">🇫🇷 France Travail</option>
+      <option value="adzuna">🌍 Adzuna</option>
+    </select>
+
+    <select id="select-cv">
+      <option value="">-- Utiliser les mots-clés de mon CV --</option>
+    </select>
+
+    <input type="text" id="input-q" placeholder="Mots-clés (ex: développeur...)"/>
+    <input type="text" id="input-dep" placeholder="Ville ou département" style="max-width: 180px;"/>
+
+    <select id="select-contrat" style="max-width: 160px;">
+      <option value="">Tous contrats</option>
+      <option value="CDI">CDI</option>
+      <option value="CDD">CDD</option>
+      <option value="MIS">Intérim</option>
+      <option value="SAI">Saisonnier</option>
+      <option value="LIB">Freelance</option>
+    </select>
+
+    <button type="button" id="btn-rechercher">🔍 Rechercher</button>
+  </div>
+
+  <div id="zone-resultats">
+    <div class="vide">
+      <div class="vide-ico">🔍</div>
+      <p>Cliquez sur "Rechercher" pour voir les offres</p>
+      <p style="font-size:.85rem;opacity:.8;">
+        Sélectionnez un CV pour utiliser ses mots-clés automatiquement
+      </p>
+    </div>
+  </div>
+</main>
+
+<!-- ============ MODALE DÉTAIL ============ -->
+<div class="modale" id="modale-detail">
+  <div class="modale-boite modale-detail">
+    <button class="modale-x" onclick="fermerModaleDetail()">×</button>
+    <div id="detail-contenu"></div>
+    <div class="detail-actions-modale">
+      <button type="button" class="btn-postuler" onclick="postulerDepuisDetail()">
+        📨 Postuler avec mon CV
+      </button>
+      <a href="#" target="_blank" id="detail-lien-externe" class="btn-ghost-dark">
+        📄 Voir sur le site
+      </a>
+    </div>
+  </div>
+</div>
+
+<!-- ============ MODALE POSTULER ============ -->
+<div class="modale" id="modale-postuler">
+  <div class="modale-boite modale-sauvegarde">
+    <button class="modale-x" onclick="fermerModalePostuler()">×</button>
+
+    <div style="text-align:center;font-size:3rem;margin-bottom:8px;">📨</div>
+    <h3 style="text-align:center;margin-bottom:6px;">Postuler à cette offre</h3>
+    <p id="postuler-offre-titre" style="font-weight:700;color:#2c3e50;margin:10px 0 18px;background:#f9fbfc;padding:12px 16px;border-radius:10px;border-left:3px solid #f39c12;"></p>
+
+    <label>📄 CV à envoyer</label>
+    <select id="postuler-select-cv">
+      <option value="">-- Choisir un CV --</option>
+    </select>
+
+    <label>✍️ Message de motivation (optionnel)</label>
+    <textarea id="postuler-message" rows="5"
+              placeholder="Madame, Monsieur,&#10;&#10;Je vous adresse ma candidature..."></textarea>
+
+    <div style="background:#eff6ff;border-left:3px solid #3b82f6;padding:12px 16px;border-radius:10px;margin-bottom:20px;font-size:.82rem;color:#1e40af;line-height:1.5;">
+      ℹ️ Une copie de votre candidature (avec le PDF de votre CV) sera envoyée à votre adresse email.
+    </div>
+
+    <div class="modale-actions">
+      <button type="button" class="btn-annuler" onclick="fermerModalePostuler()">Annuler</button>
+      <button type="button" class="btn-postuler" id="btn-envoyer-candidature">
+        📨 Générer et envoyer
+      </button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ==================== ÉTAT GLOBAL ====================
+let mesCvs = [];
+let offreEnCours = null;
+let offreDetailEnCours = null;
+window.offresActuelles = [];
+
+
+// ==================== CHARGER LES CV ====================
+async function chargerMesCv() {
+  try {
+    const res = await fetch('/api/emplois/mes-cv');
+    const json = await res.json();
+    if (json.success) {
+      mesCvs = json.cvs;
+      const select = document.getElementById('select-cv');
+      select.innerHTML = '<option value="">-- Utiliser les mots-clés de mon CV --</option>';
+      json.cvs.forEach(cv => {
+        const opt = document.createElement('option');
+        opt.value = cv.id;
+        opt.textContent = `📄 ${cv.titre}`;
+        select.appendChild(opt);
+      });
+    }
+  } catch (e) { console.error(e); }
+}
+
+
+// ==================== RECHERCHE ====================
+async function rechercher() {
+  const zone = document.getElementById('zone-resultats');
+  const btn = document.getElementById('btn-rechercher');
+  const source = document.getElementById('select-source').value;
+  const nomSource = source === 'adzuna' ? 'Adzuna' : 'France Travail';
+
+  zone.innerHTML = `<div class="chargement"><div class="spinner"></div><p>Recherche sur ${nomSource}...</p></div>`;
+  btn.disabled = true;
+
+  try {
+    let json;
+
+    if (source === 'adzuna') {
+      const params = new URLSearchParams({
+        q: document.getElementById('input-q').value.trim(),
+        ville: document.getElementById('input-dep').value.trim(),
+      });
+      const res = await fetch('/api/emplois/recherche-adzuna?' + params);
+      json = await res.json();
+      json.source = 'Adzuna';
+    } else {
+      const params = new URLSearchParams({
+        q: document.getElementById('input-q').value.trim(),
+        dep: document.getElementById('input-dep').value.trim(),
+        contrat: document.getElementById('select-contrat').value,
+        cv_id: document.getElementById('select-cv').value,
+      });
+      const res = await fetch('/api/emplois/recherche?' + params);
+      json = await res.json();
+      json.source = 'France Travail';
+    }
+
+    if (!json.success) {
+      zone.innerHTML = `<div class="vide"><div class="vide-ico">❌</div><p>${json.error || 'Erreur'}</p></div>`;
+      return;
+    }
+
+    if (!json.offres || json.offres.length === 0) {
+      zone.innerHTML = `<div class="vide"><div class="vide-ico">😕</div><p>Aucune offre trouvée</p></div>`;
+      return;
+    }
+
+    window.offresActuelles = json.offres;
+
+    let html = `<p style="color:#64748b;font-size:.85rem;margin-bottom:14px;">
+      📊 <b>${json.offres.length}</b> offre(s) — Source : <b>${json.source}</b>
+    </p><div class="offres-liste">`;
+
+    json.offres.forEach((o, index) => {
+      const tags = (o.competences || []).slice(0, 6)
+        .map(c => `<span class="offre-tag">${escapeHtml(c)}</span>`).join('');
+
+      html += `
+        <div class="offre-card">
+          <div class="offre-header">
+            <div>
+              <div class="offre-titre">${escapeHtml(o.titre)}</div>
+              <div class="offre-entreprise">🏢 ${escapeHtml(o.entreprise)}</div>
+            </div>
+            <span class="offre-contrat">${escapeHtml(o.type_contrat)}</span>
+          </div>
+          <div class="offre-infos">
+            <span>📍 ${escapeHtml(o.lieu)}</span>
+            <span>💰 ${escapeHtml(o.salaire)}</span>
+            ${o.date_creation ? `<span>📅 ${escapeHtml(o.date_creation)}</span>` : ''}
+          </div>
+          <div class="offre-desc">${escapeHtml(o.description)}</div>
+          ${tags ? `<div class="offre-tags">${tags}</div>` : ''}
+          <div class="offre-actions">
+            <button type="button" class="btn-postuler" onclick="ouvrirModalePostuler(${index})">
+              📨 Postuler avec ce CV
+            </button>
+            <button type="button" class="btn-ghost-dark" onclick="ouvrirModaleDetail(${index})">
+              📄 Voir les détails
+            </button>
+          </div>
+        </div>
+      `;
+    });
+
+    html += '</div>';
+    zone.innerHTML = html;
+
+  } catch (e) {
+    console.error(e);
+    zone.innerHTML = `<div class="vide"><div class="vide-ico">⚠️</div><p>Erreur de connexion</p></div>`;
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+
+// ==================== MODALE DÉTAIL ====================
+function ouvrirModaleDetail(index) {
+  const offres = window.offresActuelles || [];
+  const offre = offres[index];
+  if (!offre) return;
+
+  offreDetailEnCours = offre;
+  const contenu = document.getElementById('detail-contenu');
+
+  // Badges
+  let badges = '';
+  if (offre.type_contrat) badges += `<span class="badge-detail badge-contrat">${escapeHtml(offre.type_contrat)}</span>`;
+  if (offre.lieu) badges += `<span class="badge-detail badge-lieu">📍 ${escapeHtml(offre.lieu)}</span>`;
+  if (offre.salaire && offre.salaire !== 'Non précisé') badges += `<span class="badge-detail badge-salaire">💰 ${escapeHtml(offre.salaire)}</span>`;
+  if (offre.date_creation) badges += `<span class="badge-detail badge-date">📅 ${escapeHtml(offre.date_creation)}</span>`;
+  if (offre.categorie) badges += `<span class="badge-detail badge-categorie">🏷️ ${escapeHtml(offre.categorie)}</span>`;
+
+  // Compétences
+  let compHtml = '';
+  if (offre.competences && offre.competences.length > 0) {
+    compHtml = `
+      <div class="detail-section">
+        <h4>🎯 Compétences demandées</h4>
+        <div class="detail-tags">
+          ${offre.competences.map(c => `<span>${escapeHtml(c)}</span>`).join('')}
+        </div>
+      </div>`;
+  }
+
+  // ⭐ Description COMPLÈTE (utilise description_complete si dispo)
+  const descriptionFinale = offre.description_complete || offre.description || '';
+
+  contenu.innerHTML = `
+    <h2 class="detail-titre">${escapeHtml(offre.titre)}</h2>
+    <p class="detail-entreprise">🏢 <b>${escapeHtml(offre.entreprise)}</b></p>
+    <div class="detail-badges">${badges}</div>
+
+    ${descriptionFinale ? `
+      <div class="detail-section">
+        <h4>📋 Description du poste</h4>
+        <div class="detail-description">${escapeHtml(descriptionFinale)}</div>
+      </div>` : ''}
+
+    ${compHtml}
+  `;
+
+  const lienExterne = document.getElementById('detail-lien-externe');
+  if (lienExterne) lienExterne.href = offre.url || '#';
+
+  document.getElementById('modale-detail').classList.add('ouverte');
+}
+
+function fermerModaleDetail() {
+  document.getElementById('modale-detail')?.classList.remove('ouverte');
+}
+
+function postulerDepuisDetail() {
+  const offres = window.offresActuelles || [];
+  const index = offres.findIndex(o => o.id === offreDetailEnCours.id);
+  fermerModaleDetail();
+  if (index >= 0) ouvrirModalePostuler(index);
+}
+
+
+// ==================== MODALE POSTULER ====================
+function ouvrirModalePostuler(index) {
+  const offres = window.offresActuelles || [];
+  const offre = offres[index];
+  if (!offre) return;
+
+  offreEnCours = offre;
+
+  document.getElementById('postuler-offre-titre').innerHTML =
+    `📌 ${escapeHtml(offre.titre)} <span style="color:#94a3b8;font-weight:400;font-size:.85rem;display:block;margin-top:4px;">${escapeHtml(offre.entreprise)} — ${escapeHtml(offre.lieu)}</span>`;
+
+  const select = document.getElementById('postuler-select-cv');
+  select.innerHTML = '<option value="">-- Choisir un CV --</option>';
+  if (mesCvs.length === 0) {
+    select.innerHTML = '<option value="">❌ Aucun CV sauvegardé</option>';
+  } else {
+    mesCvs.forEach(cv => {
+      const opt = document.createElement('option');
+      opt.value = cv.id;
+      opt.textContent = `📄 ${cv.titre}`;
+      select.appendChild(opt);
+    });
+    select.selectedIndex = 1;
+  }
+
+  document.getElementById('postuler-message').value =
+    `Madame, Monsieur,\n\nJe vous adresse ma candidature pour le poste de ${offre.titre}.\n\nVous trouverez mon CV en pièce jointe.\n\nCordialement,`;
+
+  document.getElementById('modale-postuler').classList.add('ouverte');
+}
+
+function fermerModalePostuler() {
+  document.getElementById('modale-postuler')?.classList.remove('ouverte');
+}
+
+
+// ==================== ENVOYER CANDIDATURE ====================
+async function envoyerCandidature() {
+  const cvId = document.getElementById('postuler-select-cv').value;
+  const message = document.getElementById('postuler-message').value.trim();
+  const btn = document.getElementById('btn-envoyer-candidature');
+  const texteOrig = btn.textContent;
+
+  if (!cvId) { afficherToast('⚠️ Sélectionnez un CV'); return; }
+  if (!offreEnCours) { afficherToast('⚠️ Offre introuvable'); return; }
+
+  btn.disabled = true;
+  btn.textContent = '⏳ Chargement...';
+
+  try {
+    const resCV = await fetch('/api/mes-cv/' + cvId);
+    const jsonCV = await resCV.json();
+    if (!jsonCV.success) throw new Error('CV introuvable');
+
+    const cvData = jsonCV.cv.donnees;
+    const modele = jsonCV.cv.modele;
+
+    btn.textContent = '⏳ Préparation PDF...';
+
+    const resHtml = await fetch('/api/apercu', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ modele, ...cvData })
+    });
+    const jsonHtml = await resHtml.json();
+
+    const conteneur = document.createElement('div');
+    conteneur.style.cssText = 'position:fixed;left:-9999px;top:0;width:210mm;background:#fff;';
+    conteneur.innerHTML = jsonHtml.html;
+    document.body.appendChild(conteneur);
+
+    const images = conteneur.querySelectorAll('img');
+    await Promise.all(Array.from(images).map(img =>
+      img.complete ? Promise.resolve() : new Promise(r => { img.onload = r; img.onerror = r; })
+    ));
+    await new Promise(r => setTimeout(r, 250));
+
+    btn.textContent = '⏳ Génération PDF...';
+
+    const pdfBlob = await html2pdf().set({
+      margin: [10, 10, 10, 10],
+      image: { type: 'jpeg', quality: 0.95 },
+      html2canvas: { scale: 2, useCORS: true, letterRendering: true },
+      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+      pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
+    }).from(conteneur).outputPdf('blob');
+
+    document.body.removeChild(conteneur);
+
+    const pdf_base64 = await blobToBase64(pdfBlob);
+
+    btn.textContent = '⏳ Envoi...';
+
+    const resEnvoi = await fetch('/api/emplois/postuler', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        cv_id: parseInt(cvId),
+        offre: offreEnCours,
+        message: message,
+        pdf_base64: pdf_base64,
+      }),
+    });
+
+    const jsonEnvoi = await resEnvoi.json();
+
+    if (jsonEnvoi.success) {
+      fermerModalePostuler();
+      afficherToast('✅ Candidature envoyée !');
+      setTimeout(() => {
+        if (offreEnCours && offreEnCours.url) window.open(offreEnCours.url, '_blank');
+      }, 1200);
+    } else {
+      afficherToast('❌ ' + (jsonEnvoi.error || 'Erreur'));
+    }
+
+  } catch (e) {
+    console.error(e);
+    afficherToast('❌ Erreur : ' + e.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = texteOrig;
+  }
+}
+
+
+// ==================== UTILS ====================
+function blobToBase64(blob) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+}
+
+function escapeHtml(s) {
+  if (!s) return '';
+  const d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}
+
+function afficherToast(msg) {
+  const t = document.getElementById('toast');
+  if (!t) { alert(msg); return; }
+  t.textContent = msg;
+  t.classList.add('visible');
+  setTimeout(() => t.classList.remove('visible'), 3500);
+}
+
+
+// ==================== INIT ====================
+document.addEventListener('DOMContentLoaded', () => {
+  chargerMesCv();
+
+  document.getElementById('btn-rechercher')?.addEventListener('click', rechercher);
+  document.getElementById('input-q')?.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') rechercher();
+  });
+
+  document.getElementById('btn-envoyer-candidature')?.addEventListener('click', envoyerCandidature);
+
+  document.getElementById('modale-postuler')?.addEventListener('click', (e) => {
+    if (e.target.id === 'modale-postuler') fermerModalePostuler();
+  });
+  document.getElementById('modale-detail')?.addEventListener('click', (e) => {
+    if (e.target.id === 'modale-detail') fermerModaleDetail();
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      fermerModalePostuler();
+      fermerModaleDetail();
+    }
+  });
+});
+</script>
+
+</body>
+</html>

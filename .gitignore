@@ -1,0 +1,27 @@
+# Secrets
+.env
+*.env
+
+# Base de données
+*.db
+*.sqlite
+instance/
+
+# Python
+__pycache__/
+*.py[cod]
+venv/
+env/
+.venv/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
