@@ -5,6 +5,23 @@
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
 <title>Marchandises — Caisse</title>
 <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}"/>
+<style>
+  .table-actions { display: flex; gap: 6px; justify-content: flex-end; }
+  .btn-icon {
+    background: #f1f5f9; border: none; border-radius: 8px;
+    padding: 6px 10px; cursor: pointer; font-size: .9rem;
+    font-family: inherit; text-decoration: none;
+    display: inline-flex; align-items: center;
+  }
+  .btn-icon:hover { background: #e2e8f0; }
+  .btn-icon.edit { background: #dbeafe; color: #1d4ed8; }
+  .btn-icon.edit:hover { background: #bfdbfe; }
+  .btn-icon.danger { background: #fee2e2; color: #b91c1c; }
+  .btn-icon.danger:hover { background: #fecaca; }
+  #recap { background:#f8fafc; border-radius:10px; padding:14px 16px;
+           font-size:.9rem; color:#334155; display:none; }
+  #recap .l { display:flex; justify-content:space-between; }
+</style>
 </head>
 <body>
 
@@ -35,45 +52,25 @@
     <div class="page-head">
       <div>
         <h1>📦 Marchandises</h1>
-        <p class="sous-titre" style="margin:0;">
-          Gestion avec calcul automatique des réductions
-        </p>
+        <p class="sous-titre" style="margin:0;">Calcul automatique des réductions</p>
       </div>
-      <button class="btn-add" onclick="ouvrirModale()">
-        ＋ Nouvelle marchandise
-      </button>
+      <button class="btn-add" onclick="ouvrirModaleAjout()">＋ Nouvelle marchandise</button>
     </div>
 
     <div class="kpis">
-      <div class="kpi blue">
-        <div class="lbl">Nombre</div>
-        <div class="val">{{ marchandises|length }}</div>
-      </div>
-      <div class="kpi">
-        <div class="lbl">Total brut</div>
-        <div class="val">{{ '%.2f'|format(total_brut) }}</div>
-      </div>
-      <div class="kpi red">
-        <div class="lbl">Réductions</div>
-        <div class="val">− {{ '%.2f'|format(total_red) }}</div>
-      </div>
-      <div class="kpi green">
-        <div class="lbl">Total net</div>
-        <div class="val">{{ '%.2f'|format(total_net) }}</div>
-      </div>
+      <div class="kpi blue"><div class="lbl">Nombre</div><div class="val">{{ marchandises|length }}</div></div>
+      <div class="kpi"><div class="lbl">Total brut</div><div class="val">{{ '%.2f'|format(total_brut) }}</div></div>
+      <div class="kpi red"><div class="lbl">Réductions</div><div class="val">− {{ '%.2f'|format(total_red) }}</div></div>
+      <div class="kpi green"><div class="lbl">Total net</div><div class="val">{{ '%.2f'|format(total_net) }}</div></div>
     </div>
 
     {% if marchandises %}
       <table class="table">
         <thead>
           <tr>
-            <th>Nom</th>
-            <th>Prix unit.</th>
-            <th>Qté</th>
-            <th>Réduction</th>
-            <th>Brut</th>
-            <th>Net</th>
-            <th>Devise</th>
+            <th>Nom</th><th>Prix unit.</th><th>Qté</th><th>Réduction</th>
+            <th>Brut</th><th>Net</th><th>Devise</th>
+            <th style="text-align:right;">Actions</th>
           </tr>
         </thead>
         <tbody>
@@ -84,10 +81,26 @@
             <td>{{ m.quantite }}</td>
             <td>{{ m.reduction_pct }} %</td>
             <td>{{ '%.2f'|format(m.prix_total_brut) }}</td>
-            <td class="montant-cell" style="color:#16a34a;">
-              {{ '%.2f'|format(m.prix_total_net) }}
-            </td>
+            <td class="montant-cell" style="color:#16a34a;">{{ '%.2f'|format(m.prix_total_net) }}</td>
             <td><span class="badge-devise">{{ m.devise }}</span></td>
+            <td>
+              <div class="table-actions">
+                <button class="btn-icon edit" title="Modifier"
+                        onclick='ouvrirEdit({{ {
+                          "id": m.id, "nom": m.nom,
+                          "description": m.description or "",
+                          "prix_unitaire": m.prix_unitaire,
+                          "quantite": m.quantite,
+                          "reduction_pct": m.reduction_pct,
+                          "devise": m.devise
+                        }|tojson }})'>✏️</button>
+                <form method="post"
+                      action="{{ url_for('web_pages.marchandise_delete', m_id=m.id) }}"
+                      onsubmit="return confirm('Supprimer « {{ m.nom }} » ?');">
+                  <button type="submit" class="btn-icon danger" title="Supprimer">🗑️</button>
+                </form>
+              </div>
+            </td>
           </tr>
           {% endfor %}
         </tbody>
@@ -95,132 +108,124 @@
     {% else %}
       <div class="empty">
         <div class="ico">📭</div>
-        <p>Aucune marchandise enregistrée pour l'instant.</p>
-        <button class="btn-add" onclick="ouvrirModale()">
-          ＋ Ajouter ma première marchandise
-        </button>
+        <p>Aucune marchandise enregistrée.</p>
+        <button class="btn-add" onclick="ouvrirModaleAjout()">＋ Ajouter ma première marchandise</button>
       </div>
     {% endif %}
 
   </div>
 </main>
 
-<!-- ==================== MODALE ==================== -->
-<div class="modal-backdrop" id="modalMarchandise" onclick="clicFond(event)">
-  <div class="modal" role="dialog" aria-modal="true">
+<!-- ==================== MODALE AJOUT ==================== -->
+<div class="modal-backdrop" id="modalAjout" onclick="clicFond(event,'modalAjout')">
+  <div class="modal">
     <div class="modal-head">
       <h2>➕ Nouvelle marchandise</h2>
-      <button class="modal-close" onclick="fermerModale()" title="Fermer">✕</button>
+      <button class="modal-close" onclick="fermerModale('modalAjout')">✕</button>
     </div>
-
     <form method="post" class="modal-body">
       <div class="formulaire">
-
-        <label>Nom de la marchandise *
-          <input type="text" name="nom"
-                 placeholder="Ex : Sac de riz" required autofocus/>
-        </label>
-
-        <label>Description
-          <textarea name="description" rows="2"
-                    placeholder="Optionnel"></textarea>
-        </label>
-
-        <label>Prix unitaire *
-          <input type="number" step="0.01" name="prix_unitaire"
-                 id="prix" placeholder="0.00" required
-                 oninput="majCalcul()"/>
-        </label>
-
-        <label>Quantité *
-          <input type="number" step="0.01" name="quantite"
-                 id="qte" value="1" required
-                 oninput="majCalcul()"/>
-        </label>
-
-        <label>Réduction (%)
-          <input type="number" step="0.01" name="reduction_pct"
-                 id="red" value="0" min="0" max="100"
-                 oninput="majCalcul()"/>
-        </label>
-
+        <label>Nom *<input type="text" name="nom" required autofocus placeholder="Ex : Sac de riz"/></label>
+        <label>Description<textarea name="description" rows="2"></textarea></label>
+        <label>Prix unitaire *<input type="number" step="0.01" name="prix_unitaire" id="a-prix" required oninput="calc('a')"/></label>
+        <label>Quantité *<input type="number" step="0.01" name="quantite" id="a-qte" value="1" required oninput="calc('a')"/></label>
+        <label>Réduction (%)<input type="number" step="0.01" name="reduction_pct" id="a-red" value="0" min="0" max="100" oninput="calc('a')"/></label>
         <label>Devise
           <select name="devise">
-            <option value="CDF">CDF (Franc congolais)</option>
-            <option value="USD">USD (Dollar)</option>
-            <option value="EUR">EUR (Euro)</option>
+            <option value="CDF">CDF</option><option value="USD">USD</option><option value="EUR">EUR</option>
           </select>
         </label>
-
-        <!-- Récap calcul live -->
-        <div id="recap" style="
-          background:#f8fafc; border-radius:10px; padding:14px 16px;
-          font-size:.9rem; color:#334155; display:none;
-        ">
-          <div style="display:flex; justify-content:space-between;">
-            <span>Brut :</span><strong id="r-brut">0.00</strong>
-          </div>
-          <div style="display:flex; justify-content:space-between;">
-            <span>Réduction :</span>
-            <strong id="r-red" style="color:#dc2626;">− 0.00</strong>
-          </div>
-          <div style="
-            display:flex; justify-content:space-between;
-            border-top:1px solid #e2e8f0; margin-top:6px; padding-top:6px;
-          ">
-            <span>Net :</span>
-            <strong id="r-net" style="color:#16a34a;">0.00</strong>
-          </div>
+        <div id="a-recap" style="display:none;background:#f8fafc;border-radius:10px;padding:14px 16px;font-size:.9rem;">
+          <div style="display:flex;justify-content:space-between;"><span>Brut :</span><strong id="a-brut">0.00</strong></div>
+          <div style="display:flex;justify-content:space-between;"><span>Réduction :</span><strong id="a-rred" style="color:#dc2626;">− 0.00</strong></div>
+          <div style="display:flex;justify-content:space-between;border-top:1px solid #e2e8f0;margin-top:6px;padding-top:6px;"><span>Net :</span><strong id="a-net" style="color:#16a34a;">0.00</strong></div>
         </div>
-
       </div>
-
       <div class="modal-actions">
-        <button type="button" class="btn-cancel" onclick="fermerModale()">
-          Annuler
-        </button>
+        <button type="button" class="btn-cancel" onclick="fermerModale('modalAjout')">Annuler</button>
         <button type="submit" class="btn-add">💾 Enregistrer</button>
       </div>
     </form>
   </div>
 </div>
 
-<footer class="pied">
-  <div class="wrap"><p>© {{ annee }} — Caisse & Marchandises</p></div>
-</footer>
+<!-- ==================== MODALE ÉDITION ==================== -->
+<div class="modal-backdrop" id="modalEdit" onclick="clicFond(event,'modalEdit')">
+  <div class="modal">
+    <div class="modal-head">
+      <h2>✏️ Modifier la marchandise</h2>
+      <button class="modal-close" onclick="fermerModale('modalEdit')">✕</button>
+    </div>
+    <form method="post" id="formEdit" class="modal-body">
+      <div class="formulaire">
+        <label>Nom *<input type="text" name="nom" id="e-nom" required/></label>
+        <label>Description<textarea name="description" id="e-description" rows="2"></textarea></label>
+        <label>Prix unitaire *<input type="number" step="0.01" name="prix_unitaire" id="e-prix" required oninput="calc('e')"/></label>
+        <label>Quantité *<input type="number" step="0.01" name="quantite" id="e-qte" required oninput="calc('e')"/></label>
+        <label>Réduction (%)<input type="number" step="0.01" name="reduction_pct" id="e-red" min="0" max="100" oninput="calc('e')"/></label>
+        <label>Devise
+          <select name="devise" id="e-devise">
+            <option value="CDF">CDF</option><option value="USD">USD</option><option value="EUR">EUR</option>
+          </select>
+        </label>
+        <div id="e-recap" style="display:none;background:#f8fafc;border-radius:10px;padding:14px 16px;font-size:.9rem;">
+          <div style="display:flex;justify-content:space-between;"><span>Brut :</span><strong id="e-brut">0.00</strong></div>
+          <div style="display:flex;justify-content:space-between;"><span>Réduction :</span><strong id="e-rred" style="color:#dc2626;">− 0.00</strong></div>
+          <div style="display:flex;justify-content:space-between;border-top:1px solid #e2e8f0;margin-top:6px;padding-top:6px;"><span>Net :</span><strong id="e-net" style="color:#16a34a;">0.00</strong></div>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn-cancel" onclick="fermerModale('modalEdit')">Annuler</button>
+        <button type="submit" class="btn-add">💾 Enregistrer</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<footer class="pied"><div class="wrap"><p>© {{ annee }} — Caisse & Marchandises</p></div></footer>
 
 <script>
-  function ouvrirModale() {
-    document.getElementById('modalMarchandise').classList.add('open');
+  function ouvrirModaleAjout() {
+    document.getElementById('modalAjout').classList.add('open');
     document.body.style.overflow = 'hidden';
   }
-  function fermerModale() {
-    document.getElementById('modalMarchandise').classList.remove('open');
+
+  function ouvrirEdit(data) {
+    document.getElementById('formEdit').action = '/marchandises/' + data.id + '/edit';
+    document.getElementById('e-nom').value = data.nom || '';
+    document.getElementById('e-description').value = data.description || '';
+    document.getElementById('e-prix').value = data.prix_unitaire || '';
+    document.getElementById('e-qte').value = data.quantite || 1;
+    document.getElementById('e-red').value = data.reduction_pct || 0;
+    document.getElementById('e-devise').value = data.devise || 'CDF';
+    calc('e');
+    document.getElementById('modalEdit').classList.add('open');
+    document.body.style.overflow = 'hidden';
+  }
+
+  function fermerModale(id) {
+    document.getElementById(id).classList.remove('open');
     document.body.style.overflow = '';
   }
-  function clicFond(e) {
-    if (e.target.id === 'modalMarchandise') fermerModale();
-  }
+  function clicFond(e, id) { if (e.target.id === id) fermerModale(id); }
   document.addEventListener('keydown', e => {
-    if (e.key === 'Escape') fermerModale();
+    if (e.key === 'Escape') { fermerModale('modalAjout'); fermerModale('modalEdit'); }
   });
 
-  // Calcul live
-  function majCalcul() {
-    const prix = parseFloat(document.getElementById('prix').value) || 0;
-    const qte  = parseFloat(document.getElementById('qte').value)  || 0;
-    const red  = parseFloat(document.getElementById('red').value)  || 0;
-
+  // Calcul live : préfixe 'a' (ajout) ou 'e' (édition)
+  function calc(p) {
+    const prix = parseFloat(document.getElementById(p + '-prix').value) || 0;
+    const qte  = parseFloat(document.getElementById(p + '-qte').value)  || 0;
+    const red  = parseFloat(document.getElementById(p + '-red').value)  || 0;
     const brut = prix * qte;
-    const montantRed = brut * (red / 100);
-    const net = brut - montantRed;
-
-    const recap = document.getElementById('recap');
+    const mred = brut * (red / 100);
+    const net  = brut - mred;
+    const recap = document.getElementById(p + '-recap');
     if (brut > 0) {
       recap.style.display = 'block';
-      document.getElementById('r-brut').textContent = brut.toFixed(2);
-      document.getElementById('r-red').textContent  = '− ' + montantRed.toFixed(2);
-      document.getElementById('r-net').textContent  = net.toFixed(2);
+      document.getElementById(p + '-brut').textContent = brut.toFixed(2);
+      document.getElementById(p + '-rred').textContent = '− ' + mred.toFixed(2);
+      document.getElementById(p + '-net').textContent  = net.toFixed(2);
     } else {
       recap.style.display = 'none';
     }
