@@ -349,3 +349,146 @@ def admin_delete_marchandise(m_id):
     db.session.commit()
     flash(f'Marchandise « {nom} » supprimée.', 'success')
     return redirect(url_for('pages.admin'))
+  # ==================================================
+# RECETTES — Modifier / Supprimer
+# ==================================================
+@web_pages_bp.route('/recettes/<int:recette_id>/edit', methods=['POST'])
+@login_required
+def recette_edit(recette_id):
+    r = db.session.get(Recette, recette_id)
+    if not r or r.user_id != current_user.id:
+        flash('Recette introuvable.', 'error')
+        return redirect(url_for('web_pages.recettes'))
+
+    nom = (request.form.get('nom') or '').strip()
+    date_str = (request.form.get('date') or '').strip()
+    heure = (request.form.get('heure') or '').strip()
+    montant_str = (request.form.get('montant') or '').strip()
+    devise = (request.form.get('devise') or 'CDF').strip()
+    description = (request.form.get('description') or '').strip()
+
+    erreurs = []
+    if not nom:
+        erreurs.append('Le nom est obligatoire')
+    if not date_str:
+        erreurs.append('La date est obligatoire')
+    if not heure:
+        erreurs.append("L'heure est obligatoire")
+
+    jour = _jour_depuis_date(date_str) if date_str else None
+    if date_str and not jour:
+        erreurs.append('Format de date invalide')
+
+    try:
+        montant_val = float(montant_str)
+        if montant_val <= 0:
+            erreurs.append('Le montant doit être positif')
+    except (ValueError, TypeError):
+        erreurs.append('Montant invalide')
+        montant_val = None
+
+    if erreurs:
+        for e in erreurs:
+            flash(e, 'error')
+    else:
+        r.nom = nom
+        r.jour = jour
+        r.date = date_str
+        r.heure = heure
+        r.montant = montant_val
+        r.devise = devise
+        r.description = description
+        db.session.commit()
+        flash(f'Recette « {nom} » modifiée ✅', 'success')
+
+    return redirect(url_for('web_pages.recettes'))
+
+
+@web_pages_bp.route('/recettes/<int:recette_id>/delete', methods=['POST'])
+@login_required
+def recette_delete(recette_id):
+    r = db.session.get(Recette, recette_id)
+    if not r or r.user_id != current_user.id:
+        flash('Recette introuvable.', 'error')
+        return redirect(url_for('web_pages.recettes'))
+    nom = r.nom
+    db.session.delete(r)
+    db.session.commit()
+    flash(f'Recette « {nom} » supprimée.', 'success')
+    return redirect(url_for('web_pages.recettes'))
+
+
+# ==================================================
+# MARCHANDISES — Modifier / Supprimer
+# ==================================================
+@web_pages_bp.route('/marchandises/<int:m_id>/edit', methods=['POST'])
+@login_required
+def marchandise_edit(m_id):
+    m = db.session.get(Marchandise, m_id)
+    if not m or m.user_id != current_user.id:
+        flash('Marchandise introuvable.', 'error')
+        return redirect(url_for('web_pages.marchandises'))
+
+    nom = (request.form.get('nom') or '').strip()
+    description = (request.form.get('description') or '').strip()
+    prix_str = (request.form.get('prix_unitaire') or '').strip()
+    qte_str = (request.form.get('quantite') or '').strip()
+    red_str = (request.form.get('reduction_pct') or '0').strip()
+    devise = (request.form.get('devise') or 'CDF').strip()
+
+    erreurs = []
+    if not nom:
+        erreurs.append('Le nom est obligatoire')
+
+    try:
+        prix_val = float(prix_str)
+        if prix_val <= 0:
+            erreurs.append('Le prix doit être positif')
+    except (ValueError, TypeError):
+        erreurs.append('Prix unitaire invalide')
+        prix_val = None
+
+    try:
+        qte_val = float(qte_str)
+        if qte_val <= 0:
+            erreurs.append('La quantité doit être positive')
+    except (ValueError, TypeError):
+        erreurs.append('Quantité invalide')
+        qte_val = None
+
+    try:
+        red_val = float(red_str) if red_str else 0.0
+        if red_val < 0 or red_val > 100:
+            erreurs.append('La réduction doit être entre 0 et 100')
+    except (ValueError, TypeError):
+        erreurs.append('Réduction invalide')
+        red_val = 0.0
+
+    if erreurs:
+        for e in erreurs:
+            flash(e, 'error')
+    else:
+        m.nom = nom
+        m.description = description
+        m.prix_unitaire = prix_val
+        m.quantite = qte_val
+        m.reduction_pct = red_val
+        m.devise = devise
+        db.session.commit()
+        flash(f'Marchandise « {nom} » modifiée ✅', 'success')
+
+    return redirect(url_for('web_pages.marchandises'))
+
+
+@web_pages_bp.route('/marchandises/<int:m_id>/delete', methods=['POST'])
+@login_required
+def marchandise_delete(m_id):
+    m = db.session.get(Marchandise, m_id)
+    if not m or m.user_id != current_user.id:
+        flash('Marchandise introuvable.', 'error')
+        return redirect(url_for('web_pages.marchandises'))
+    nom = m.nom
+    db.session.delete(m)
+    db.session.commit()
+    flash(f'Marchandise « {nom} » supprimée.', 'success')
+    return redirect(url_for('web_pages.marchandises'))
