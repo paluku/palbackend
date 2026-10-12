@@ -16,7 +16,7 @@ from models import User
 from blueprints.api_recettes import api_recettes_bp
 from blueprints.api_marchandises import api_marchandises_bp
 from blueprints.api_stats import api_stats_bp
-
+from blueprints.web_pages import web_pages_bp
 
 # ================================================================
 # FACTORY
@@ -34,7 +34,7 @@ def create_app():
 
     # ==================== CORS (pour Flutter) ====================
     cors.init_app(
-          app,
+        app,
         resources={r"/api/*": {
             "origins": "*",
             "allow_headers": ["Content-Type", "Authorization"],
@@ -98,7 +98,7 @@ def create_app():
     app.register_blueprint(api_recettes_bp)
     app.register_blueprint(api_marchandises_bp)
     app.register_blueprint(api_stats_bp)
-
+    app.register_blueprint(web_pages_bp)
     # ==================== GESTION D'ERREURS ====================
     @app.errorhandler(403)
     def e403(e):
@@ -165,6 +165,6 @@ if __name__ == '__main__':
 
     app.run(
         host='0.0.0.0',
-        port=int(os.getenv('PORT', 5001)),
+        port=int(os.getenv('PORT', 5000)),
         debug=True,
     )

@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Statistiques — Caisse</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}"/>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="wrap">
+    <a href="/" class="logo">💰 Caisse</a>
+    <nav class="menu">
+      <a href="/">🏠 Accueil</a>
+      <a href="/recettes">💰 Recettes</a>
+      <a href="/marchandises">📦 Marchandises</a>
+      <a href="/stats" class="active">📊 Stats</a>
+      {% if current_user.is_admin %}<a href="/admin">🎛️ Admin</a>{% endif %}
+      <span class="badge">👤 {{ current_user.nom }}</span>
+      <a href="/logout" class="btn-logout">Déconnexion</a>
+    </nav>
+  </div>
+</header>
+
+<main class="contenu">
+  <div class="wrap">
+
+    <h1>📊 Statistiques</h1>
+    <p class="sous-titre">Vue d'ensemble de votre activité</p>
+
+    <!-- RECETTES -->
+    <h2 style="margin-top:28px;">💰 Recettes</h2>
+    <div class="kpis" style="margin-top:14px;">
+      <div class="kpi blue">
+        <div class="lbl">Nombre</div>
+        <div class="val">{{ nb_recettes }}</div>
+      </div>
+      <div class="kpi green">
+        <div class="lbl">Total</div>
+        <div class="val">{{ '%.2f'|format(total_recettes) }}</div>
+      </div>
+    </div>
+
+    {% if recettes_par_devise %}
+      <h3 style="margin-top:20px; color:#334155; font-size:1rem;">
+        Détail par devise
+      </h3>
+      <table class="table" style="margin-top:10px;">
+        <thead><tr><th>Devise</th><th>Total</th></tr></thead>
+        <tbody>
+          {% for devise, montant in recettes_par_devise.items() %}
+          <tr>
+            <td><span class="badge-devise">{{ devise }}</span></td>
+            <td class="montant-cell">{{ '%.2f'|format(montant) }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% endif %}
+
+    <!-- MARCHANDISES -->
+    <h2 style="margin-top:40px;">📦 Marchandises</h2>
+    <div class="kpis" style="margin-top:14px;">
+      <div class="kpi blue">
+        <div class="lbl">Nombre</div>
+        <div class="val">{{ nb_marchandises }}</div>
+      </div>
+      <div class="kpi">
+        <div class="lbl">Total brut</div>
+        <div class="val">{{ '%.2f'|format(total_brut) }}</div>
+      </div>
+      <div class="kpi red">
+        <div class="lbl">Réductions</div>
+        <div class="val">− {{ '%.2f'|format(total_reductions) }}</div>
+      </div>
+      <div class="kpi green">
+        <div class="lbl">Total net</div>
+        <div class="val">{{ '%.2f'|format(total_net) }}</div>
+      </div>
+    </div>
+
+    {% if marchandises_par_devise %}
+      <h3 style="margin-top:20px; color:#334155; font-size:1rem;">
+        Détail par devise (net)
+      </h3>
+      <table class="table" style="margin-top:10px;">
+        <thead><tr><th>Devise</th><th>Total net</th></tr></thead>
+        <tbody>
+          {% for devise, montant in marchandises_par_devise.items() %}
+          <tr>
+            <td><span class="badge-devise">{{ devise }}</span></td>
+            <td class="montant-cell" style="color:#16a34a;">
+              {{ '%.2f'|format(montant) }}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% endif %}
+
+  </div>
+</main>
+
+<footer class="pied">
+  <div class="wrap"><p>© {{ annee }} — Caisse & Marchandises</p></div>
+</footer>
+
+</body>
+</html>

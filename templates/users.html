@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Utilisateurs — Caisse</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}"/>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="wrap">
+    <a href="/" class="logo">💰 Caisse</a>
+    <nav class="menu">
+      <a href="/">🏠 Accueil</a>
+      <a href="/recettes">💰 Recettes</a>
+      <a href="/marchandises">📦 Marchandises</a>
+      <a href="/stats">📊 Stats</a>
+      {% if current_user.is_admin %}<a href="/admin">🎛️ Admin</a>{% endif %}
+      <span class="badge">👤 {{ current_user.nom }}</span>
+      <a href="/logout" class="btn-logout">Déconnexion</a>
+    </nav>
+  </div>
+</header>
+
+<main class="contenu">
+  <div class="wrap">
+    <h1>👥 Utilisateurs</h1>
+    <p class="sous-titre">{{ users|length }} compte(s) enregistré(s)</p>
+
+    {% if users %}
+      <table class="table">
+        <thead>
+          <tr>
+            <th>ID</th><th>Nom</th><th>Email</th>
+            <th>Rôle</th><th>Créé</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for u in users %}
+          <tr>
+            <td>{{ u.id }}</td>
+            <td><strong>{{ u.nom }}</strong></td>
+            <td>{{ u.email }}</td>
+            <td>
+              {% if u.role == 'admin' %}
+                <span class="badge-devise" style="background:#fef3c7;color:#78350f;">
+                  👑 admin
+                </span>
+              {% else %}
+                <span class="badge-devise" style="background:#e0e7ff;color:#3730a3;">
+                  👤 user
+                </span>
+              {% endif %}
+            </td>
+            <td>{{ u.created_at.strftime('%d/%m/%Y') if u.created_at else '—' }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <div class="empty">
+        <div class="ico">👥</div>
+        <p>Aucun utilisateur enregistré.</p>
+      </div>
+    {% endif %}
+  </div>
+</main>
+
+<footer class="pied">
+  <div class="wrap"><p>© {{ annee }} — Caisse & Marchandises</p></div>
+</footer>
+
+</body>
+</html>

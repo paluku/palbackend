@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Recettes — Caisse</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}"/>
+
+<style>
+  /* ---------- Barre d'action ---------- */
+  .page-head {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 16px; margin-bottom: 22px; flex-wrap: wrap;
+  }
+  .page-head h1 { margin: 0; }
+
+  .btn-add {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: #f59e0b; color: #0f172a;
+    padding: 10px 18px; border: none; border-radius: 10px;
+    font-size: .95rem; font-weight: 700; cursor: pointer;
+    box-shadow: 0 2px 6px rgba(245,158,11,.35);
+    transition: transform .12s, box-shadow .12s, background .12s;
+  }
+  .btn-add:hover {
+    background: #d97706;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(245,158,11,.45);
+  }
+
+  /* ---------- KPI ---------- */
+  .kpis {
+    display: grid; gap: 14px;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    margin-bottom: 26px;
+  }
+  .kpi {
+    background: #fff; padding: 18px 20px; border-radius: 12px;
+    box-shadow: 0 1px 3px rgba(0,0,0,.06);
+    border-left: 4px solid #f59e0b;
+  }
+  .kpi .lbl {
+    color: #64748b; font-size: .82rem; text-transform: uppercase;
+    letter-spacing: .5px; margin-bottom: 4px;
+  }
+  .kpi .val {
+    font-size: 1.6rem; font-weight: 700; color: #0f172a;
+  }
+  .kpi.green { border-left-color: #16a34a; }
+  .kpi.green .val { color: #16a34a; }
+
+  /* ---------- Modale ---------- */
+  .modal-backdrop {
+    display: none;
+    position: fixed; inset: 0;
+    background: rgba(15,23,42,.55);
+    backdrop-filter: blur(2px);
+    z-index: 1000;
+    align-items: center; justify-content: center;
+    padding: 20px;
+    animation: fadeIn .15s ease-out;
+  }
+  .modal-backdrop.open { display: flex; }
+
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+  }
+  @keyframes slideUp {
+    from { transform: translateY(20px); opacity: 0; }
+    to   { transform: translateY(0);    opacity: 1; }
+  }
+
+  .modal {
+    background: #fff;
+    width: 100%; max-width: 500px;
+    border-radius: 16px;
+    box-shadow: 0 20px 50px rgba(0,0,0,.25);
+    animation: slideUp .2s ease-out;
+    max-height: 92vh; overflow-y: auto;
+  }
+  .modal-head {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 20px 24px 12px;
+    border-bottom: 1px solid #e2e8f0;
+  }
+  .modal-head h2 { margin: 0; font-size: 1.2rem; color: #0f172a; }
+  .modal-close {
+    background: none; border: none; cursor: pointer;
+    font-size: 1.5rem; color: #94a3b8; line-height: 1;
+    padding: 4px 8px; border-radius: 6px;
+  }
+  .modal-close:hover { background: #f1f5f9; color: #dc2626; }
+
+  .modal-body { padding: 20px 24px; }
+
+  .modal-actions {
+    display: flex; gap: 10px; justify-content: flex-end;
+    padding: 12px 24px 22px;
+  }
+  .btn-cancel {
+    background: #f1f5f9; color: #334155;
+    padding: 10px 18px; border: none; border-radius: 8px;
+    font-weight: 600; cursor: pointer;
+  }
+  .btn-cancel:hover { background: #e2e8f0; }
+
+  /* ---------- Table ---------- */
+  .empty {
+    text-align: center; padding: 50px 20px;
+    background: #fff; border-radius: 12px;
+    box-shadow: 0 1px 3px rgba(0,0,0,.06);
+  }
+  .empty .ico { font-size: 3rem; margin-bottom: 10px; }
+  .empty p { color: #64748b; margin-bottom: 16px; }
+
+  .badge-devise {
+    display: inline-block; padding: 3px 10px; border-radius: 999px;
+    background: #fef3c7; color: #78350f;
+    font-size: .75rem; font-weight: 700;
+  }
+  .montant-cell { font-weight: 600; color: #0f172a; }
+</style>
+</head>
+<body>
+
+<!-- ==================== HEADER ==================== -->
+<header class="topbar">
+  <div class="wrap">
+    <a href="/" class="logo">💰 Caisse</a>
+    <nav class="menu">
+      <a href="/">🏠 Accueil</a>
+      <a href="/recettes" class="btn-or">💰 Recettes</a>
+      <a href="/marchandises">📦 Marchandises</a>
+      <a href="/stats">📊 Stats</a>
+      {% if current_user.is_admin %}<a href="/admin">🎛️ Admin</a>{% endif %}
+      <span class="badge">👤 {{ current_user.nom }}</span>
+      <a href="/logout" class="btn-logout">Déconnexion</a>
+    </nav>
+  </div>
+</header>
+
+<!-- ==================== CONTENU ==================== -->
+<main class="contenu">
+  <div class="wrap">
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% for cat, msg in messages %}
+        <div class="flash flash-{{ cat }}">{{ msg }}</div>
+      {% endfor %}
+    {% endwith %}
+
+    <!-- ---------- Titre + bouton ---------- -->
+    <div class="page-head">
+      <div>
+        <h1>💰 Recettes journalières</h1>
+        <p class="sous-titre" style="margin:0;">
+          Gérez vos recettes par jour et devise
+        </p>
+      </div>
+      <button class="btn-add" onclick="ouvrirModale()">
+        ＋ Nouvelle recette
+      </button>
+    </div>
+
+    <!-- ---------- KPI ---------- -->
+    <div class="kpis">
+      <div class="kpi">
+        <div class="lbl">Nombre</div>
+        <div class="val">{{ recettes|length }}</div>
+      </div>
+      <div class="kpi green">
+        <div class="lbl">Total</div>
+        <div class="val">{{ '%.2f'|format(total) }}</div>
+      </div>
+    </div>
+
+    <!-- ---------- Liste ---------- -->
+    {% if recettes %}
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Nom</th>
+            <th>Jour</th>
+            <th>Date</th>
+            <th>Heure</th>
+            <th>Montant</th>
+            <th>Devise</th>
+            <th>Description</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for r in recettes %}
+          <tr>
+            <td><strong>{{ r.nom }}</strong></td>
+            <td>{{ r.jour }}</td>
+            <td>{{ r.date }}</td>
+            <td>{{ r.heure }}</td>
+            <td class="montant-cell">{{ '%.2f'|format(r.montant) }}</td>
+            <td><span class="badge-devise">{{ r.devise }}</span></td>
+            <td>{{ r.description or '—' }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <div class="empty">
+        <div class="ico">📭</div>
+        <p>Aucune recette enregistrée pour l'instant.</p>
+        <button class="btn-add" onclick="ouvrirModale()">
+          ＋ Ajouter ma première recette
+        </button>
+      </div>
+    {% endif %}
+
+  </div>
+</main>
+
+<!-- ==================== MODALE ==================== -->
+<div class="modal-backdrop" id="modalRecette" onclick="clicFond(event)">
+  <div class="modal" role="dialog" aria-modal="true">
+    <div class="modal-head">
+      <h2>➕ Nouvelle recette</h2>
+      <button class="modal-close" onclick="fermerModale()" title="Fermer">✕</button>
+    </div>
+
+    <form method="post" class="modal-body">
+      <div class="formulaire">
+
+        <label>Nom de la recette *
+          <input type="text" name="nom"
+                 placeholder="Ex : Vente boutique" required autofocus/>
+        </label>
+
+        <label>Date *
+          <input type="date" name="date" required/>
+        </label>
+
+        <label>Heure *
+          <input type="time" name="heure" required/>
+        </label>
+
+        <label>Montant *
+          <input type="number" step="0.01" name="montant"
+                 placeholder="0.00" required/>
+        </label>
+
+        <label>Devise
+          <select name="devise">
+            <option value="CDF">CDF (Franc congolais)</option>
+            <option value="USD">USD (Dollar)</option>
+            <option value="EUR">EUR (Euro)</option>
+          </select>
+        </label>
+
+        <label>Description
+          <textarea name="description" rows="2"
+                    placeholder="Optionnel"></textarea>
+        </label>
+
+      </div>
+
+      <div class="modal-actions">
+        <button type="button" class="btn-cancel" onclick="fermerModale()">
+          Annuler
+        </button>
+        <button type="submit" class="btn-add">
+          💾 Enregistrer
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ==================== FOOTER ==================== -->
+<footer class="pied">
+  <div class="wrap"><p>© {{ annee }} — Caisse & Marchandises</p></div>
+</footer>
+
+<!-- ==================== JS ==================== -->
+<script>
+  function ouvrirModale() {
+    document.getElementById('modalRecette').classList.add('open');
+    document.body.style.overflow = 'hidden';
+
+    // Pré-remplir la date et l'heure à maintenant
+    const dateInput = document.querySelector('input[name="date"]');
+    const heureInput = document.querySelector('input[name="heure"]');
+    const now = new Date();
+
+    if (dateInput && !dateInput.value) {
+      dateInput.value = now.toISOString().slice(0, 10);
+    }
+    if (heureInput && !heureInput.value) {
+      heureInput.value = now.toTimeString().slice(0, 5);
+    }
+  }
+
+  function fermerModale() {
+    document.getElementById('modalRecette').classList.remove('open');
+    document.body.style.overflow = '';
+  }
+
+  // Clic sur le fond sombre → fermer
+  function clicFond(event) {
+    if (event.target.id === 'modalRecette') {
+      fermerModale();
+    }
+  }
+
+  // Touche Échap → fermer
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') fermerModale();
+  });
+</script>
+
+</body>
+</html>
