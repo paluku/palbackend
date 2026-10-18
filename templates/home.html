@@ -12,9 +12,10 @@
   <div class="wrap">
     <a href="/" class="logo">💰 Caisse</a>
     <nav class="menu">
-      {% if current_user.is_authenticated %}
+      {% if current_user.is_authenticated and solde_global is defined %}
         <a href="/" class="active">🏠 Accueil</a>
         <a href="/recettes">💰 Recettes</a>
+		<a href="/depenses">💸 Dépenses</a>
         <a href="/marchandises">📦 Marchandises</a>
         <a href="/stats">📊 Stats</a>
         {% if current_user.is_admin %}
@@ -41,7 +42,36 @@
     <div class="hero">
       <h1>💰 Caisse & Marchandises</h1>
       <p>Application de gestion — Recettes journalières, marchandises et statistiques</p>
-      <div class="hero-actions">
+      
+	{% if current_user.is_authenticated %}
+  <div style="
+    display:inline-flex; gap:24px; margin:20px 0 6px;
+    background:rgba(255,255,255,.1); padding:14px 24px;
+    border-radius:12px; font-size:.95rem;
+  ">
+    <div>
+      <div style="color:#cbd5e1; font-size:.75rem; text-transform:uppercase;">Recettes</div>
+      <strong style="color:#86efac; font-size:1.2rem;">{{ '%.2f'|format(total_recettes_global) }}</strong>
+    </div>
+    <div>
+      <div style="color:#cbd5e1; font-size:.75rem; text-transform:uppercase;">Dépenses</div>
+      <strong style="color:#fca5a5; font-size:1.2rem;">− {{ '%.2f'|format(total_depenses_global) }}</strong>
+    </div>
+    <div>
+      <div style="color:#cbd5e1; font-size:.75rem; text-transform:uppercase;">Solde net</div>
+      <strong style="color:{{ '#86efac' if solde_global >= 0 else '#fca5a5' }}; font-size:1.2rem;">
+        {{ '%.2f'|format(solde_global) }}
+      </strong>
+    </div>
+  </div>
+{% endif %}  
+	  
+	  
+	  
+	  
+	  
+	  
+	  <div class="hero-actions">
         {% if current_user.is_authenticated %}
           <a href="/recettes" class="btn-or btn-grand" style="width:auto;">💰 Voir mes recettes</a>
           <a href="/marchandises" class="btn-ghost">📦 Mes marchandises</a>

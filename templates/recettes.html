@@ -10,8 +10,8 @@
   .btn-icon {
     background: #f1f5f9; border: none; border-radius: 8px;
     padding: 6px 10px; cursor: pointer; font-size: .9rem;
-    font-family: inherit; transition: background .15s, color .15s;
-    text-decoration: none; display: inline-flex; align-items: center;
+    font-family: inherit; text-decoration: none;
+    display: inline-flex; align-items: center;
   }
   .btn-icon:hover { background: #e2e8f0; }
   .btn-icon.edit { background: #dbeafe; color: #1d4ed8; }
@@ -28,6 +28,7 @@
     <nav class="menu">
       <a href="/">🏠 Accueil</a>
       <a href="/recettes" class="active">💰 Recettes</a>
+      <a href="/depenses">💸 Dépenses</a>
       <a href="/marchandises">📦 Marchandises</a>
       <a href="/stats">📊 Stats</a>
       {% if current_user.is_admin %}<a href="/admin">🎛️ Admin</a>{% endif %}
@@ -51,7 +52,13 @@
         <h1>💰 Recettes journalières</h1>
         <p class="sous-titre" style="margin:0;">Gérez vos recettes par jour et devise</p>
       </div>
-      <button class="btn-add" onclick="ouvrirModale()">＋ Nouvelle recette</button>
+      <div style="display:flex; gap:10px; flex-wrap:wrap;">
+        <a href="{{ url_for('web_pages.recettes_export') }}"
+           class="btn-ghost" style="text-decoration:none;">
+          📥 Exporter CSV
+        </a>
+        <button class="btn-add" onclick="ouvrirModale()">＋ Nouvelle recette</button>
+      </div>
     </div>
 
     <div class="kpis">
@@ -60,8 +67,16 @@
         <div class="val">{{ recettes|length }}</div>
       </div>
       <div class="kpi green">
-        <div class="lbl">Total</div>
+        <div class="lbl">Total recettes</div>
         <div class="val">{{ '%.2f'|format(total) }}</div>
+      </div>
+      <div class="kpi red">
+        <div class="lbl">Total dépenses</div>
+        <div class="val">− {{ '%.2f'|format(total_depenses) }}</div>
+      </div>
+      <div class="kpi {{ 'green' if solde_net >= 0 else 'red' }}">
+        <div class="lbl">💰 Solde net</div>
+        <div class="val">{{ '%.2f'|format(solde_net) }}</div>
       </div>
     </div>
 
@@ -92,9 +107,7 @@
                           "heure": r.heure, "montant": r.montant,
                           "devise": r.devise,
                           "description": r.description or ""
-                        }|tojson }})'>
-                  ✏️
-                </button>
+                        }|tojson }})'>✏️</button>
                 <form method="post"
                       action="{{ url_for('web_pages.recette_delete', recette_id=r.id) }}"
                       onsubmit="return confirm('Supprimer la recette « {{ r.nom }} » ?');">
@@ -117,7 +130,7 @@
   </div>
 </main>
 
-<!-- ==================== MODALE AJOUT ==================== -->
+<!-- MODALE AJOUT -->
 <div class="modal-backdrop" id="modalAjout" onclick="clicFond(event, 'modalAjout')">
   <div class="modal">
     <div class="modal-head">
@@ -127,8 +140,8 @@
     <form method="post" class="modal-body">
       <div class="formulaire">
         <label>Nom *<input type="text" name="nom" required autofocus placeholder="Ex : Vente boutique"/></label>
-        <label>Date *<input type="date" name="date" required/></label>
-        <label>Heure *<input type="time" name="heure" required/></label>
+        <label>Date *<input type="date" name="date" id="a-date" required/></label>
+        <label>Heure *<input type="time" name="heure" id="a-heure" required/></label>
         <label>Montant *<input type="number" step="0.01" name="montant" placeholder="0.00" required/></label>
         <label>Devise
           <select name="devise">
@@ -147,7 +160,7 @@
   </div>
 </div>
 
-<!-- ==================== MODALE ÉDITION ==================== -->
+<!-- MODALE ÉDITION -->
 <div class="modal-backdrop" id="modalEdit" onclick="clicFond(event, 'modalEdit')">
   <div class="modal">
     <div class="modal-head">
@@ -162,9 +175,9 @@
         <label>Montant *<input type="number" step="0.01" name="montant" id="e-montant" required/></label>
         <label>Devise
           <select name="devise" id="e-devise">
-            <option value="CDF">CDF (Franc congolais)</option>
-            <option value="USD">USD (Dollar)</option>
-            <option value="EUR">EUR (Euro)</option>
+            <option value="CDF">CDF</option>
+            <option value="USD">USD</option>
+            <option value="EUR">EUR</option>
           </select>
         </label>
         <label>Description<textarea name="description" id="e-description" rows="2"></textarea></label>
@@ -183,13 +196,12 @@
   function ouvrirModale() {
     document.getElementById('modalAjout').classList.add('open');
     document.body.style.overflow = 'hidden';
-    const d = document.querySelector('#modalAjout input[name="date"]');
-    const h = document.querySelector('#modalAjout input[name="heure"]');
+    const d = document.getElementById('a-date');
+    const h = document.getElementById('a-heure');
     const now = new Date();
     if (d && !d.value) d.value = now.toISOString().slice(0,10);
     if (h && !h.value) h.value = now.toTimeString().slice(0,5);
   }
-
   function ouvrirEdit(data) {
     document.getElementById('formEdit').action = '/recettes/' + data.id + '/edit';
     document.getElementById('e-nom').value = data.nom || '';
@@ -201,17 +213,13 @@
     document.getElementById('modalEdit').classList.add('open');
     document.body.style.overflow = 'hidden';
   }
-
   function fermerModale(id) {
     document.getElementById(id).classList.remove('open');
     document.body.style.overflow = '';
   }
   function clicFond(e, id) { if (e.target.id === id) fermerModale(id); }
   document.addEventListener('keydown', e => {
-    if (e.key === 'Escape') {
-      fermerModale('modalAjout');
-      fermerModale('modalEdit');
-    }
+    if (e.key === 'Escape') { fermerModale('modalAjout'); fermerModale('modalEdit'); }
   });
 </script>
 

@@ -16,7 +16,26 @@ pages_bp = Blueprint('pages', __name__)
 
 @pages_bp.route('/', strict_slashes=False)
 def home():
-    return render_template('home.html')
+    # Calcul du solde global si connecté
+    solde_global = total_recettes_global = total_depenses_global = None
+    if current_user.is_authenticated:
+        from models import Recette, Depense
+        total_recettes_global = (db.session.query(
+            db.func.coalesce(db.func.sum(Recette.montant), 0)
+        ).filter(Recette.user_id == current_user.id).scalar() or 0)
+
+        total_depenses_global = (db.session.query(
+            db.func.coalesce(db.func.sum(Depense.montant), 0)
+        ).filter(Depense.user_id == current_user.id).scalar() or 0)
+
+        solde_global = total_recettes_global - total_depenses_global
+
+    return render_template(
+        'home.html',
+        solde_global=solde_global,
+        total_recettes_global=total_recettes_global,
+        total_depenses_global=total_depenses_global,
+    )
 
 
 @pages_bp.route('/login', methods=['GET', 'POST'], strict_slashes=False)

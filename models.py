@@ -141,3 +141,34 @@ class Marchandise(db.Model):
             'prix_total_net': round(self.prix_total_net, 2),
             'created_at': self.created_at.strftime('%d/%m/%Y %H:%M') if self.created_at else '',
         }
+        
+# ==================== DÉPENSES ====================
+class Depense(db.Model):
+    __tablename__ = 'depenses'
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True)
+
+    nom = db.Column(db.String(150), nullable=False)
+    categorie = db.Column(db.String(50), default='Autre')   # Alimentation, Transport, Loyer, etc.
+    date = db.Column(db.String(10), nullable=False, index=True)   # YYYY-MM-DD
+    heure = db.Column(db.String(5), nullable=False)
+    montant = db.Column(db.Float, nullable=False)
+    devise = db.Column(db.String(3), nullable=False, default='CDF')
+    description = db.Column(db.Text, default='')
+
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'nom': self.nom,
+            'categorie': self.categorie,
+            'date': self.date,
+            'heure': self.heure,
+            'montant': self.montant,
+            'devise': self.devise,
+            'description': self.description,
+            'created_at': self.created_at.strftime('%d/%m/%Y %H:%M') if self.created_at else '',
+        }
