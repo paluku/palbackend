@@ -24,4 +24,4 @@ env/
 Thumbs.db
 
 # Logs
-*.log
+*.log*.csv
