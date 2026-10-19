@@ -1,1 +1,246 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Graphiques — Caisse</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}"/>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+  .chart-card {
+    background: #fff;
+    padding: 24px;
+    border-radius: 14px;
+    box-shadow: 0 1px 3px rgba(0,0,0,.06);
+    margin-bottom: 24px;
+  }
+  .chart-card h2 {
+    font-size: 1.15rem;
+    color: #0f172a;
+    margin-bottom: 18px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .chart-container {
+    position: relative;
+    height: 340px;
+  }
+  .kpi-global {
+    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+    color: #fff;
+    border-left: none !important;
+  }
+  .kpi-global .val {
+    color: #fff !important;
+    font-size: 2rem;
+  }
+  .kpi-global .lbl {
+    color: rgba(255,255,255,.9) !important;
+  }
+  .empty-chart {
+    text-align: center;
+    padding: 50px 20px;
+    color: #94a3b8;
+  }
+  .empty-chart .ico { font-size: 3rem; margin-bottom: 10px; }
+</style>
+</head>
+<body>
 
+<header class="topbar">
+  <div class="wrap">
+    <a href="/" class="logo">💰 Caisse</a>
+    <nav class="menu">
+      <a href="/">🏠 Accueil</a>
+      <a href="/recettes">💰 Recettes</a>
+      <a href="/depenses">💸 Dépenses</a>
+      <a href="/marchandises">📦 Marchandises</a>
+      <a href="/stats">📊 Stats</a>
+      <a href="/graphiques" class="active">📈 Graphiques</a>
+      <a href="/messages">💬 Messages</a>
+      {% if current_user.is_admin %}<a href="/admin">🎛️ Admin</a>{% endif %}
+      <span class="badge">👤 {{ current_user.nom }}</span>
+      <a href="/logout" class="btn-logout">Déconnexion</a>
+    </nav>
+  </div>
+</header>
+
+<main class="contenu">
+  <div class="wrap">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% for cat, msg in messages %}
+        <div class="flash flash-{{ cat }}">{{ msg }}</div>
+      {% endfor %}
+    {% endwith %}
+
+    <h1>📈 Graphiques</h1>
+    <p class="sous-titre">Visualisation de vos recettes et marchandises</p>
+
+    <!-- ============ KPI ============ -->
+    <div class="kpis">
+      <div class="kpi green">
+        <div class="lbl">💰 Total recettes</div>
+        <div class="val">{{ '%.2f'|format(total_recettes) }}</div>
+      </div>
+      <div class="kpi blue">
+        <div class="lbl">📦 Total marchandises (net)</div>
+        <div class="val">{{ '%.2f'|format(total_marchandises) }}</div>
+      </div>
+      <div class="kpi kpi-global">
+        <div class="lbl">➕ TOTAL GLOBAL</div>
+        <div class="val">{{ '%.2f'|format(total_global) }}</div>
+      </div>
+    </div>
+
+    <!-- ============ COURBE RECETTES ============ -->
+    <div class="chart-card">
+      <h2>📈 Évolution des recettes par date</h2>
+      {% if dates %}
+        <div class="chart-container">
+          <canvas id="chartRecettes"></canvas>
+        </div>
+      {% else %}
+        <div class="empty-chart">
+          <div class="ico">📭</div>
+          <p>Aucune recette enregistrée.</p>
+        </div>
+      {% endif %}
+    </div>
+
+    <!-- ============ CAMEMBERT MARCHANDISES ============ -->
+    <div class="chart-card">
+      <h2>🥧 Marchandises nettes par devise</h2>
+      {% if marchandises_par_devise %}
+        <div class="chart-container" style="height: 380px;">
+          <canvas id="chartMarchandises"></canvas>
+        </div>
+      {% else %}
+        <div class="empty-chart">
+          <div class="ico">📭</div>
+          <p>Aucune marchandise enregistrée.</p>
+        </div>
+      {% endif %}
+    </div>
+
+  </div>
+</main>
+
+<footer class="pied"><div class="wrap"><p>© {{ annee }} — Caisse & Marchandises</p></div></footer>
+
+<script>
+  {% if dates %}
+  // ============ COURBE RECETTES ============
+  const ctxRecettes = document.getElementById('chartRecettes');
+  new Chart(ctxRecettes, {
+    type: 'line',
+    data: {
+      labels: {{ dates|tojson }},
+      datasets: [{
+        label: 'Recettes',
+        data: {{ montants|tojson }},
+        borderColor: '#16a34a',
+        backgroundColor: 'rgba(22, 163, 74, 0.15)',
+        borderWidth: 3,
+        pointBackgroundColor: '#16a34a',
+        pointBorderColor: '#fff',
+        pointBorderWidth: 2,
+        pointRadius: 5,
+        pointHoverRadius: 7,
+        tension: 0.35,
+        fill: true,
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: '#0f172a',
+          padding: 12,
+          titleFont: { size: 14, weight: 'bold' },
+          bodyFont: { size: 13 },
+          callbacks: {
+            label: function(context) {
+              return 'Total : ' + context.parsed.y.toFixed(2);
+            }
+          }
+        }
+      },
+      scales: {
+        y: {
+          beginAtZero: true,
+          grid: { color: '#e2e8f0' },
+          ticks: {
+            callback: function(value) { return value.toFixed(0); },
+            color: '#64748b'
+          }
+        },
+        x: {
+          grid: { display: false },
+          ticks: { color: '#64748b' }
+        }
+      }
+    }
+  });
+  {% endif %}
+
+  {% if marchandises_par_devise %}
+  // ============ CAMEMBERT MARCHANDISES ============
+  const ctxMarchandises = document.getElementById('chartMarchandises');
+  const deviseLabels = {{ marchandises_par_devise.keys()|list|tojson }};
+  const deviseValues = {{ marchandises_par_devise.values()|list|tojson }};
+  const deviseColors = ['#f59e0b', '#3b82f6', '#10b981', '#ef4444', '#8b5cf6'];
+
+  new Chart(ctxMarchandises, {
+    type: 'doughnut',
+    data: {
+      labels: deviseLabels,
+      datasets: [{
+        data: deviseValues,
+        backgroundColor: deviseColors.slice(0, deviseLabels.length),
+        borderColor: '#fff',
+        borderWidth: 3,
+        hoverOffset: 10,
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          position: 'right',
+          labels: {
+            padding: 16,
+            font: { size: 13, weight: '600' },
+            color: '#0f172a',
+            generateLabels: function(chart) {
+              const data = chart.data;
+              return data.labels.map((label, i) => ({
+                text: label + ' : ' + data.datasets[0].data[i].toFixed(2),
+                fillStyle: data.datasets[0].backgroundColor[i],
+                fontColor: '#0f172a',
+                padding: 10,
+              }));
+            }
+          }
+        },
+        tooltip: {
+          backgroundColor: '#0f172a',
+          padding: 12,
+          callbacks: {
+            label: function(context) {
+              return context.label + ' : ' + context.parsed.toFixed(2);
+            }
+          }
+        }
+      },
+      cutout: '50%',
+    }
+  });
+  {% endif %}
+</script>
+
+</body>
+</html>
