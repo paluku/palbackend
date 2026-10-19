@@ -16,27 +16,39 @@ pages_bp = Blueprint('pages', __name__)
 
 @pages_bp.route('/', strict_slashes=False)
 def home():
-    # Calcul du solde global si connecté
-    solde_global = total_recettes_global = total_depenses_global = None
+    solde_global = total_recettes_global = total_depenses_global = 0
+    users_online = []
+
     if current_user.is_authenticated:
-        from models import Recette, Depense
+        from models import Recette, Depense, User
+        from datetime import datetime as _dt
+
+        # ✅ Met à jour last_seen de l'utilisateur courant
+        current_user.last_seen = _dt.utcnow()
+        if not current_user.online_since:
+            current_user.online_since = _dt.utcnow()
+        db.session.commit()
+
         total_recettes_global = (db.session.query(
             db.func.coalesce(db.func.sum(Recette.montant), 0)
-        ).filter(Recette.user_id == current_user.id).scalar() or 0)
+        ).scalar() or 0)
 
         total_depenses_global = (db.session.query(
             db.func.coalesce(db.func.sum(Depense.montant), 0)
-        ).filter(Depense.user_id == current_user.id).scalar() or 0)
+        ).scalar() or 0)
 
         solde_global = total_recettes_global - total_depenses_global
+
+        users_online = [u for u in User.query.all() if u.is_online]
+        users_online.sort(key=lambda u: (u.id != current_user.id, u.nom.lower()))
 
     return render_template(
         'home.html',
         solde_global=solde_global,
         total_recettes_global=total_recettes_global,
         total_depenses_global=total_depenses_global,
+        users_online=users_online,
     )
-
 
 @pages_bp.route('/login', methods=['GET', 'POST'], strict_slashes=False)
 def login():
@@ -92,6 +104,13 @@ def register():
 @pages_bp.route('/logout', strict_slashes=False)
 @login_required
 def logout():
+    # ✅ Marquer l'utilisateur comme hors ligne AVANT de le déconnecter
+    from datetime import datetime as _dt
+    from extensions import db
+    current_user.last_seen = None
+    current_user.online_since = None
+    db.session.commit()
+
     logout_user()
     flash('Déconnecté.', 'success')
     return redirect(url_for('pages.login'))

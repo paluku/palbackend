@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Messages — Caisse</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}"/>
+<style>
+  .conv-list { display: flex; flex-direction: column; gap: 10px; }
+  .conv-item {
+    display: flex; align-items: center; gap: 14px;
+    background: #fff; padding: 14px 18px; border-radius: 12px;
+    box-shadow: 0 1px 3px rgba(0,0,0,.06);
+    text-decoration: none; color: inherit;
+    transition: transform .12s, box-shadow .12s;
+  }
+  .conv-item:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,.08); }
+  .conv-item.has-unread { border-left: 4px solid #f59e0b; background: #fffbeb; }
+
+  .avatar {
+    width: 44px; height: 44px; border-radius: 50%;
+    background: #f59e0b; color: #0f172a;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: 1.1rem;
+    flex-shrink: 0; position: relative;
+  }
+  .avatar .dot {
+    position: absolute; bottom: -2px; right: -2px;
+    width: 12px; height: 12px; border-radius: 50%;
+    border: 2px solid #fff;
+  }
+  .dot.online { background: #16a34a; }
+  .dot.offline { background: #94a3b8; }
+
+  .conv-info { flex: 1; min-width: 0; }
+  .conv-name { font-weight: 600; color: #0f172a; }
+  .conv-last {
+    color: #64748b; font-size: .85rem;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .conv-badge {
+    background: #dc2626; color: #fff;
+    min-width: 22px; height: 22px; padding: 0 7px;
+    border-radius: 11px; font-size: .75rem; font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+  }
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="wrap">
+    <a href="/" class="logo">💰 Caisse</a>
+    <nav class="menu">
+      <a href="/">🏠 Accueil</a>
+      <a href="/recettes">💰 Recettes</a>
+      <a href="/depenses">💸 Dépenses</a>
+      <a href="/marchandises">📦 Marchandises</a>
+      <a href="/stats">📊 Stats</a>
+      <a href="/messages" class="active">💬 Messages</a>
+      {% if current_user.is_admin %}<a href="/admin">🎛️ Admin</a>{% endif %}
+      <span class="badge">👤 {{ current_user.nom }}</span>
+      <a href="/logout" class="btn-logout">Déconnexion</a>
+    </nav>
+  </div>
+</header>
+
+<main class="contenu">
+  <div class="wrap">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% for cat, msg in messages %}
+        <div class="flash flash-{{ cat }}">{{ msg }}</div>
+      {% endfor %}
+    {% endwith %}
+
+    <h1>💬 Messages</h1>
+    <p class="sous-titre">Discutez avec les autres utilisateurs</p>
+
+    {% if conversations %}
+      <div class="conv-list">
+        {% for c in conversations %}
+          <a href="{{ url_for('web_messages.conversation', user_id=c.user.id) }}"
+             class="conv-item {{ 'has-unread' if c.non_lus > 0 else '' }}">
+            <div class="avatar">
+              {{ c.user.nom[:1]|upper }}
+              <div class="dot {{ 'online' if c.user.is_online else 'offline' }}"></div>
+            </div>
+            <div class="conv-info">
+              <div class="conv-name">
+                {{ c.user.nom }}
+                {% if c.user.is_admin %}
+                  <span style="font-size:.7rem; color:#f59e0b;">👑</span>
+                {% endif %}
+                {% if c.user.is_online %}
+                  <span style="font-size:.7rem; color:#16a34a;">● en ligne</span>
+                {% endif %}
+              </div>
+              <div class="conv-last">
+                {% if c.dernier %}
+                  {% if c.dernier.sender_id == current_user.id %}Vous : {% endif %}
+                  {{ c.dernier.contenu[:60] }}{% if c.dernier.contenu|length > 60 %}…{% endif %}
+                {% else %}
+                  <em>Aucun message</em>
+                {% endif %}
+              </div>
+            </div>
+            {% if c.non_lus > 0 %}
+              <div class="conv-badge">{{ c.non_lus }}</div>
+            {% endif %}
+          </a>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="empty">
+        <div class="ico">💬</div>
+        <p>Aucun autre utilisateur pour l'instant.</p>
+      </div>
+    {% endif %}
+  </div>
+</main>
+
+<footer class="pied"><div class="wrap"><p>© {{ annee }} — Caisse</p></div></footer>
+
+<script>
+  // Ping toutes les 30 sec pour rester "en ligne"
+  setInterval(() => {
+    fetch('/api/ping', { method: 'POST' });
+  }, 30000);
+</script>
+
+</body>
+</html>

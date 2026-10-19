@@ -1,6 +1,9 @@
 """
 Pages web HTML (Recettes, Dépenses, Marchandises, Stats, Admin, Export CSV).
 Accès via session Flask-Login (navigateur) — PAS JWT.
+
+⚠️ MODE PARTAGÉ : tous les utilisateurs connectés voient TOUTES les données.
+   Seul le créateur (ou l'admin) peut modifier/supprimer sa propre entrée.
 """
 import csv
 import io
@@ -37,14 +40,16 @@ def _is_admin():
     return current_user.is_authenticated and getattr(current_user, 'is_admin', False)
 
 
-def _total_recettes(user_id):
+def _total_recettes():
+    """Total global (tous utilisateurs)."""
     return (db.session.query(db.func.coalesce(db.func.sum(Recette.montant), 0))
-            .filter(Recette.user_id == user_id).scalar() or 0)
+            .scalar() or 0)
 
 
-def _total_depenses(user_id):
+def _total_depenses():
+    """Total global (tous utilisateurs)."""
     return (db.session.query(db.func.coalesce(db.func.sum(Depense.montant), 0))
-            .filter(Depense.user_id == user_id).scalar() or 0)
+            .scalar() or 0)
 
 
 # ==================================================
@@ -96,12 +101,12 @@ def recettes():
             flash(f'Recette « {nom} » enregistrée ✅', 'success')
             return redirect(url_for('web_pages.recettes'))
 
+    # ✅ PARTAGÉ : toutes les recettes de tout le monde
     mes_recettes = (Recette.query
-                    .filter_by(user_id=current_user.id)
                     .order_by(Recette.date.desc(), Recette.id.desc())
                     .all())
     total = sum(r.montant for r in mes_recettes)
-    total_depenses = _total_depenses(current_user.id)
+    total_depenses = _total_depenses()
     solde_net = total - total_depenses
 
     return render_template(
@@ -118,8 +123,11 @@ def recettes():
 @login_required
 def recette_edit(recette_id):
     r = db.session.get(Recette, recette_id)
-    if not r or r.user_id != current_user.id:
+    if not r:
         flash('Recette introuvable.', 'error')
+        return redirect(url_for('web_pages.recettes'))
+    if r.user_id != current_user.id and not _is_admin():
+        flash('Vous ne pouvez modifier que vos propres recettes.', 'warning')
         return redirect(url_for('web_pages.recettes'))
 
     nom = (request.form.get('nom') or '').strip()
@@ -170,8 +178,11 @@ def recette_edit(recette_id):
 @login_required
 def recette_delete(recette_id):
     r = db.session.get(Recette, recette_id)
-    if not r or r.user_id != current_user.id:
+    if not r:
         flash('Recette introuvable.', 'error')
+        return redirect(url_for('web_pages.recettes'))
+    if r.user_id != current_user.id and not _is_admin():
+        flash('Vous ne pouvez supprimer que vos propres recettes.', 'warning')
         return redirect(url_for('web_pages.recettes'))
     nom = r.nom
     db.session.delete(r)
@@ -227,12 +238,12 @@ def depenses():
             flash(f'Dépense « {nom} » enregistrée ✅', 'success')
             return redirect(url_for('web_pages.depenses'))
 
+    # ✅ PARTAGÉ : toutes les dépenses de tout le monde
     mes_depenses = (Depense.query
-                    .filter_by(user_id=current_user.id)
                     .order_by(Depense.date.desc(), Depense.id.desc())
                     .all())
     total = sum(d.montant for d in mes_depenses)
-    total_recettes = _total_recettes(current_user.id)
+    total_recettes = _total_recettes()
     solde_net = total_recettes - total
 
     return render_template(
@@ -249,8 +260,11 @@ def depenses():
 @login_required
 def depense_edit(depense_id):
     d = db.session.get(Depense, depense_id)
-    if not d or d.user_id != current_user.id:
+    if not d:
         flash('Dépense introuvable.', 'error')
+        return redirect(url_for('web_pages.depenses'))
+    if d.user_id != current_user.id and not _is_admin():
+        flash('Vous ne pouvez modifier que vos propres dépenses.', 'warning')
         return redirect(url_for('web_pages.depenses'))
 
     nom = (request.form.get('nom') or '').strip()
@@ -262,9 +276,12 @@ def depense_edit(depense_id):
     description = (request.form.get('description') or '').strip()
 
     erreurs = []
-    if not nom: erreurs.append('Le nom est obligatoire')
-    if not date_str: erreurs.append('La date est obligatoire')
-    if not heure: erreurs.append("L'heure est obligatoire")
+    if not nom:
+        erreurs.append('Le nom est obligatoire')
+    if not date_str:
+        erreurs.append('La date est obligatoire')
+    if not heure:
+        erreurs.append("L'heure est obligatoire")
 
     try:
         montant_val = float(montant_str)
@@ -295,8 +312,11 @@ def depense_edit(depense_id):
 @login_required
 def depense_delete(depense_id):
     d = db.session.get(Depense, depense_id)
-    if not d or d.user_id != current_user.id:
+    if not d:
         flash('Dépense introuvable.', 'error')
+        return redirect(url_for('web_pages.depenses'))
+    if d.user_id != current_user.id and not _is_admin():
+        flash('Vous ne pouvez supprimer que vos propres dépenses.', 'warning')
         return redirect(url_for('web_pages.depenses'))
     nom = d.nom
     db.session.delete(d)
@@ -365,8 +385,8 @@ def marchandises():
             flash(f'Marchandise « {nom} » ajoutée ✅', 'success')
             return redirect(url_for('web_pages.marchandises'))
 
+    # ✅ PARTAGÉ : toutes les marchandises de tout le monde
     mes_marchandises = (Marchandise.query
-                        .filter_by(user_id=current_user.id)
                         .order_by(Marchandise.created_at.desc())
                         .all())
 
@@ -387,8 +407,11 @@ def marchandises():
 @login_required
 def marchandise_edit(m_id):
     m = db.session.get(Marchandise, m_id)
-    if not m or m.user_id != current_user.id:
+    if not m:
         flash('Marchandise introuvable.', 'error')
+        return redirect(url_for('web_pages.marchandises'))
+    if m.user_id != current_user.id and not _is_admin():
+        flash('Vous ne pouvez modifier que vos propres marchandises.', 'warning')
         return redirect(url_for('web_pages.marchandises'))
 
     nom = (request.form.get('nom') or '').strip()
@@ -446,8 +469,11 @@ def marchandise_edit(m_id):
 @login_required
 def marchandise_delete(m_id):
     m = db.session.get(Marchandise, m_id)
-    if not m or m.user_id != current_user.id:
+    if not m:
         flash('Marchandise introuvable.', 'error')
+        return redirect(url_for('web_pages.marchandises'))
+    if m.user_id != current_user.id and not _is_admin():
+        flash('Vous ne pouvez supprimer que vos propres marchandises.', 'warning')
         return redirect(url_for('web_pages.marchandises'))
     nom = m.nom
     db.session.delete(m)
@@ -462,7 +488,8 @@ def marchandise_delete(m_id):
 @web_pages_bp.route('/stats', strict_slashes=False)
 @login_required
 def stats():
-    mes_recettes = Recette.query.filter_by(user_id=current_user.id).all()
+    # ✅ PARTAGÉ : toutes les recettes
+    mes_recettes = Recette.query.all()
     nb_recettes = len(mes_recettes)
     total_recettes = sum(r.montant for r in mes_recettes)
 
@@ -470,7 +497,8 @@ def stats():
     for r in mes_recettes:
         recettes_par_devise[r.devise] = recettes_par_devise.get(r.devise, 0) + r.montant
 
-    mes_depenses = Depense.query.filter_by(user_id=current_user.id).all()
+    # ✅ PARTAGÉ : toutes les dépenses
+    mes_depenses = Depense.query.all()
     nb_depenses = len(mes_depenses)
     total_depenses = sum(d.montant for d in mes_depenses)
 
@@ -484,7 +512,8 @@ def stats():
             depenses_par_categorie.get(d.categorie, 0) + d.montant
         )
 
-    mes_marchandises = Marchandise.query.filter_by(user_id=current_user.id).all()
+    # ✅ PARTAGÉ : toutes les marchandises
+    mes_marchandises = Marchandise.query.all()
     nb_marchandises = len(mes_marchandises)
     total_brut = sum(m.prix_total_brut for m in mes_marchandises)
     total_net = sum(m.prix_total_net for m in mes_marchandises)
@@ -542,8 +571,8 @@ def _csv_response(rows, headers, filename):
 @web_pages_bp.route('/recettes/export', strict_slashes=False)
 @login_required
 def recettes_export():
+    # ✅ PARTAGÉ : on exporte toutes les recettes
     mes_recettes = (Recette.query
-                    .filter_by(user_id=current_user.id)
                     .order_by(Recette.date.desc(), Recette.id.desc())
                     .all())
     headers = ['ID', 'Nom', 'Jour', 'Date', 'Heure', 'Montant', 'Devise', 'Description']
@@ -556,7 +585,6 @@ def recettes_export():
 @login_required
 def depenses_export():
     mes_depenses = (Depense.query
-                    .filter_by(user_id=current_user.id)
                     .order_by(Depense.date.desc(), Depense.id.desc())
                     .all())
     headers = ['ID', 'Nom', 'Catégorie', 'Date', 'Heure', 'Montant', 'Devise', 'Description']
@@ -569,7 +597,6 @@ def depenses_export():
 @login_required
 def marchandises_export():
     mes_marchandises = (Marchandise.query
-                        .filter_by(user_id=current_user.id)
                         .order_by(Marchandise.created_at.desc())
                         .all())
     headers = ['ID', 'Nom', 'Description', 'Prix unitaire', 'Quantité',
@@ -590,8 +617,8 @@ def injecter_solde_global():
         return {}
     if request.path not in ('/', '/home'):
         return {}
-    total_recettes = _total_recettes(current_user.id)
-    total_depenses = _total_depenses(current_user.id)
+    total_recettes = _total_recettes()
+    total_depenses = _total_depenses()
     return {
         'solde_global': total_recettes - total_depenses,
         'total_recettes_global': total_recettes,
@@ -739,3 +766,29 @@ def admin_delete_marchandise(m_id):
     db.session.commit()
     flash(f'Marchandise « {nom} » supprimée.', 'success')
     return redirect(url_for('pages.admin'))
+    
+@web_pages_bp.before_app_request
+def update_online_status():
+    from flask_login import current_user
+    from datetime import datetime as _dt
+    from extensions import db
+
+    if current_user.is_authenticated:
+        now = _dt.utcnow()
+        # Session terminée si last_seen > 2 min OU online_since jamais initialisé
+        if (not current_user.online_since
+                or not current_user.last_seen
+                or (now - current_user.last_seen).total_seconds() > 120):
+            current_user.online_since = now
+        current_user.last_seen = now
+        db.session.commit()
+        
+@web_pages_bp.app_context_processor
+def injecter_solde_header():
+    if not current_user.is_authenticated:
+        return {}
+    recettes = (db.session.query(db.func.coalesce(db.func.sum(Recette.montant), 0))
+                .scalar() or 0)
+    depenses = (db.session.query(db.func.coalesce(db.func.sum(Depense.montant), 0))
+                .scalar() or 0)
+    return {'solde_header': recettes - depenses}

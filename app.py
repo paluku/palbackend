@@ -17,6 +17,8 @@ from blueprints.api_recettes import api_recettes_bp
 from blueprints.api_marchandises import api_marchandises_bp
 from blueprints.api_stats import api_stats_bp
 from blueprints.web_pages import web_pages_bp
+from blueprints.web_messages import web_messages_bp
+
 
 # ================================================================
 # FACTORY
@@ -76,7 +78,12 @@ def create_app():
     @app.before_request
     def charger_utilisateur():
         g.user = current_user if current_user.is_authenticated else None
-
+        
+        if current_user.is_authenticated:
+           from datetime import datetime as _dt
+           current_user.last_seen = _dt.utcnow()
+           db.session.commit()
+    
     @app.context_processor
     def injecter_user():
         return dict(
@@ -99,6 +106,7 @@ def create_app():
     app.register_blueprint(api_marchandises_bp)
     app.register_blueprint(api_stats_bp)
     app.register_blueprint(web_pages_bp)
+    app.register_blueprint(web_messages_bp)
     # ==================== GESTION D'ERREURS ====================
     @app.errorhandler(403)
     def e403(e):
