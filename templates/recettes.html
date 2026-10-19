@@ -139,7 +139,7 @@
     </div>
     <form method="post" class="modal-body">
       <div class="formulaire">
-        <label>Nom *<input type="text" name="nom" required autofocus placeholder="Ex : Vente boutique"/></label>
+       <label>Nom *<input type="text" name="nom" required autofocus value="{{ current_user.nom }}"/></label>
         <label>Date *<input type="date" name="date" id="a-date" required/></label>
         <label>Heure *<input type="time" name="heure" id="a-heure" required/></label>
         <label>Montant *<input type="number" step="0.01" name="montant" placeholder="0.00" required/></label>
