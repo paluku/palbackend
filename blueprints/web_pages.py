@@ -792,3 +792,43 @@ def injecter_solde_header():
     depenses = (db.session.query(db.func.coalesce(db.func.sum(Depense.montant), 0))
                 .scalar() or 0)
     return {'solde_header': recettes - depenses}
+
+# ==================================================
+# PAGE GRAPHIQUES
+# ==================================================
+@web_pages_bp.route('/graphiques', strict_slashes=False)
+@login_required
+def graphiques():
+    # --- RECETTES par date ---
+    recettes = Recette.query.order_by(Recette.date.asc()).all()
+
+    # Regrouper par date
+    recettes_par_date = {}
+    for r in recettes:
+        recettes_par_date[r.date] = recettes_par_date.get(r.date, 0) + r.montant
+
+    dates = sorted(recettes_par_date.keys())
+    montants = [recettes_par_date[d] for d in dates]
+
+    # --- MARCHANDISES par devise (valeur nette) ---
+    marchandises = Marchandise.query.all()
+    marchandises_par_devise = {}
+    for m in marchandises:
+        marchandises_par_devise[m.devise] = (
+            marchandises_par_devise.get(m.devise, 0) + m.prix_total_net
+        )
+
+    # --- TOTAUX ---
+    total_recettes = sum(r.montant for r in recettes)
+    total_marchandises = sum(m.prix_total_net for m in marchandises)
+    total_global = total_recettes + total_marchandises
+
+    return render_template(
+        'graphiques.html',
+        dates=dates,
+        montants=montants,
+        marchandises_par_devise=marchandises_par_devise,
+        total_recettes=total_recettes,
+        total_marchandises=total_marchandises,
+        total_global=total_global,
+    )
