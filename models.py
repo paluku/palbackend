@@ -69,6 +69,7 @@ class User(UserMixin, db.Model):
             'nom': self.nom,
             'email': self.email,
             'role': self.role,
+            'is_admin': self.is_admin,           # ← AJOUT
             'email_verified': self.email_verified,
             'created_at': self.created_at.strftime('%d/%m/%Y') if self.created_at else '',
             'is_online': self.is_online,
