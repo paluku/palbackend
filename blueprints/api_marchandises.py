@@ -147,3 +147,23 @@ def supprimer(mid):
     log_action('marchandise_deleted', f'ID {mid}', user=current_user)
 
     return jsonify({'success': True, 'message': 'Marchandise supprimée'})
+
+@api_marchandises_bp.route('', methods=['GET'], strict_slashes=False)
+@jwt_required()
+def list_marchandises():
+    marchandises = (Marchandise.query
+                    .order_by(Marchandise.created_at.desc())
+                    .all())
+
+    total_brut = sum(m.prix_total_brut for m in marchandises)
+    total_net = sum(m.prix_total_net for m in marchandises)
+    total_red = total_brut - total_net
+
+    return jsonify({
+        'success': True,
+        'count': len(marchandises),
+        'total_brut': round(total_brut, 2),          # ← OBLIGATOIRE
+        'total_net': round(total_net, 2),            # ← OBLIGATOIRE
+        'total_reductions': round(total_red, 2),     # ← OBLIGATOIRE
+        'marchandises': [m.to_dict() for m in marchandises],
+    })

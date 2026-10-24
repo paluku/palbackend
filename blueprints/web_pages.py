@@ -151,7 +151,7 @@ def recette_edit(recette_id):
 
     try:
         montant_val = float(montant_str)
-        if montant_val <= 0:
+        if montant_val < 0:
             erreurs.append('Le montant doit être positif')
     except (ValueError, TypeError):
         erreurs.append('Montant invalide')
