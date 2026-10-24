@@ -18,6 +18,12 @@ from blueprints.api_marchandises import api_marchandises_bp
 from blueprints.api_stats import api_stats_bp
 from blueprints.web_pages import web_pages_bp
 from blueprints.web_messages import web_messages_bp
+from blueprints.api_depenses import api_depenses_bp
+from blueprints.api_graphiques import api_graphiques_bp
+from blueprints.api_messages import api_messages_bp
+from blueprints.api_admin import api_admin_bp
+
+
 
 
 # ================================================================
@@ -98,6 +104,7 @@ def create_app():
     from blueprints.pages import pages_bp
     from blueprints.api_auth import api_auth_bp
     from blueprints.api_users import api_users_bp
+   
 
     app.register_blueprint(pages_bp)
     app.register_blueprint(api_auth_bp)
@@ -107,6 +114,13 @@ def create_app():
     app.register_blueprint(api_stats_bp)
     app.register_blueprint(web_pages_bp)
     app.register_blueprint(web_messages_bp)
+    app.register_blueprint(api_depenses_bp)
+    app.register_blueprint(api_graphiques_bp)
+    app.register_blueprint(api_messages_bp)
+    app.register_blueprint(api_admin_bp)
+    
+   
+    
     # ==================== GESTION D'ERREURS ====================
     @app.errorhandler(403)
     def e403(e):
